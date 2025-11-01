@@ -100,41 +100,6 @@ pub mod gacha_machine {
         Ok(())
     }
 
-    /// Update an existing payment configuration
-    ///
-    /// Allows admin to modify the price or recipient account for an existing payment method.
-    /// The mint cannot be changed - create a new config for different tokens.
-    ///
-    /// Args:
-    /// - ctx: Context containing the payment_config to update
-    /// - payment_mint: The mint address (used for PDA derivation only)
-    /// - payment_price: New price in lamports or token units
-    /// - payment_recipient_account: New recipient account
-    ///
-    /// Returns: Result indicating success or failure
-    pub fn update_payment_config(
-        ctx: Context<UpdatePaymentConfig>,
-        payment_mint: Pubkey,
-        payment_price: u64,
-        payment_recipient_account: Pubkey,
-    ) -> Result<()> {
-        let payment_config = &mut ctx.accounts.payment_config;
-
-        // Update the mutable fields
-        payment_config.price = payment_price;
-        payment_config.admin_recipient_account = payment_recipient_account;
-
-        emit!(PaymentConfigUpdated {
-            admin: ctx.accounts.admin.key(),
-            payment_mint,
-            payment_price,
-            payment_recipient_account,
-            gacha_state: ctx.accounts.gacha_state.key()
-        });
-
-        Ok(())
-    }
-
     /// Remove a payment configuration from the gacha machine
     ///
     /// Completely removes a payment method from the gacha machine and closes the account
@@ -683,30 +648,6 @@ pub struct AddPaymentConfig<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Accounts required for updating a payment configuration
-#[derive(Accounts)]
-#[instruction(payment_mint: Pubkey)]
-pub struct UpdatePaymentConfig<'info> {
-    /// The payment config account to update
-    #[account(
-        mut,
-        seeds = [b"payment_config".as_ref(), gacha_state.key().as_ref(), payment_mint.as_ref()],
-        bump
-    )]
-    pub payment_config: Account<'info, PaymentConfig>,
-    /// The gacha machine state (for admin validation)
-    #[account(
-        mut,
-        has_one = admin,
-    )]
-    pub gacha_state: Account<'info, GachaState>,
-    /// Admin account (must match gacha_state.admin)
-    #[account(mut)]
-    pub admin: Signer<'info>,
-    /// System program
-    pub system_program: Program<'info, System>,
-}
-
 /// Accounts required for removing a payment configuration
 #[derive(Accounts)]
 #[instruction(payment_mint: Pubkey)]
@@ -1019,16 +960,6 @@ pub struct AdminTransferred {
 /// Emitted when a payment configuration is added
 #[event]
 pub struct PaymentConfigAdded {
-    pub admin: Pubkey,
-    pub payment_mint: Pubkey,
-    pub payment_price: u64,
-    pub payment_recipient_account: Pubkey,
-    pub gacha_state: Pubkey,
-}
-
-/// Emitted when a payment configuration is updated
-#[event]
-pub struct PaymentConfigUpdated {
     pub admin: Pubkey,
     pub payment_mint: Pubkey,
     pub payment_price: u64,
