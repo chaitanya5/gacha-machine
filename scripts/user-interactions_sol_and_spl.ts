@@ -24,8 +24,6 @@ import {
   SystemProgram,
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
-import * as fs from "fs/promises";
-import * as path from "path";
 import { GachaClient } from "./gacha-client";
 
 import {
@@ -40,106 +38,12 @@ import {
   validateSolBalance,
   validateSplBalance,
 } from "./utils";
+import {
+  setupSwitchboardEnvironment,
+  createCommitInstruction,
+  createRevealInstruction,
+} from "./sbUtils";
 import * as sb from "@switchboard-xyz/on-demand";
-
-// --- CONFIGURATION ---
-const RANDOMNESS_KEYPAIR_PATH = path.join(__dirname, "./randomness.json");
-
-// Switchboard on-demand program ID
-const SWITCHBOARD_ON_DEMAND_PID = sb.ON_DEMAND_MAINNET_PID;
-console.log("SWITCHBOARD_ON_DEMAND_PID", SWITCHBOARD_ON_DEMAND_PID);
-
-async function loadSbProgram(
-  provider: anchor.Provider
-): Promise<anchor.Program> {
-  const sbProgramId = await sb.getProgramId(provider.connection);
-  console.log("sbProgramId", sbProgramId);
-  const sbIdl = await anchor.Program.fetchIdl(sbProgramId, provider);
-  if (!sbIdl) {
-    throw new Error("Failed to fetch Switchboard on-demand IDL");
-  }
-  return new anchor.Program(sbIdl, provider);
-}
-
-/**
- * Setup queue function adapted from utils.ts
- */
-async function setupQueue(program: anchor.Program): Promise<PublicKey> {
-  const queueAccount = await sb.getDefaultQueue(
-    program.provider.connection.rpcEndpoint
-  );
-  return queueAccount.pubkey;
-}
-
-/**
- * Setup Switchboard environment
- */
-
-async function setupSwitchboardEnvironment(
-  connection: Connection,
-  keypair: Keypair
-): Promise<{ sbProgram: anchor.Program; queue: PublicKey }> {
-  const provider = anchorProviderFromWallet(connection, keypair);
-  const sbProgram = await loadSbProgram(provider);
-  const queue = await setupQueue(sbProgram);
-
-  return { sbProgram, queue };
-}
-
-/**
- * Load or create a randomness keypair
- */
-async function loadOrCreateRandomnessKeypair(
-  forceNew: boolean = false
-): Promise<Keypair> {
-  if (!forceNew) {
-    try {
-      const keypairData = JSON.parse(
-        await fs.readFile(RANDOMNESS_KEYPAIR_PATH, "utf-8")
-      );
-      return Keypair.fromSecretKey(new Uint8Array(keypairData));
-    } catch (error) {
-      // File doesn't exist, will create new one below
-    }
-  }
-
-  // Create new keypair
-  const keypair = Keypair.generate();
-  await fs.writeFile(
-    RANDOMNESS_KEYPAIR_PATH,
-    JSON.stringify(Array.from(keypair.secretKey))
-  );
-  console.log(
-    `Created new randomness keypair: ${keypair.publicKey.toBase58()}`
-  );
-  return keypair;
-}
-
-/**
- * Create commit instruction for Switchboard
- */
-async function createCommitInstruction(
-  randomness: sb.Randomness,
-  queue: PublicKey
-): Promise<anchor.web3.TransactionInstruction> {
-  return randomness.commitIx(queue);
-}
-
-/**
- * Create reveal instruction for Switchboard
- */
-async function createRevealInstruction(
-  randomness: sb.Randomness
-): Promise<anchor.web3.TransactionInstruction> {
-  return await retryWithBackoff(
-    async () => {
-      console.log("Creating reveal instruction...");
-      return await randomness.revealIx();
-    },
-    5,
-    1000
-  );
-}
 
 /**
  * Create randomness account with retry logic
@@ -152,7 +56,10 @@ async function createRandomnessAccount(
     async () => {
       console.log("🔄 Creating Switchboard randomness account...");
 
-      const randomnessKp = await loadOrCreateRandomnessKeypair(true);
+      const randomnessKp = Keypair.generate();
+      console.log(
+        `Created new randomness keypair: ${randomnessKp.publicKey.toBase58()}`
+      );
 
       // Setup Switchboard environment to get the queue
       const { sbProgram, queue } = await setupSwitchboardEnvironment(
