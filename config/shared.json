@@ -1,29 +1,29 @@
 {
   "devnet": {
-    "programId": "5mmPwgAQMSGwyrUpvPy8f2PaYCNbLgLYSCgGCKNLt5SH",
+    "programId": "DYZTsZh8GjcaAP75kuhY6byXS66v97riot8adtUibryh",
     "encryptionKey": "my-super-secret-key-for-devnet",
     "rpcUrl": "https://api.devnet.solana.com",
     "SOL": {
       "mint": "11111111111111111111111111111111",
-      "cost": "0.1",
+      "cost": "0.0012345",
       "decimals": "9",
       "ticker": "SOL"
     },
     "USDT": {
       "mint": "BjWefDXh4Hb6ZJefaMSqJj9CYhBGFeprsuiTPDw5bhFL",
-      "cost": "25",
+      "cost": "5",
       "decimals": "6",
       "ticker": "USDT"
     },
     "USDC": {
       "mint": "GmySGcVsZgHw1UN9DeumsHVourYz4HxgbTRUdoXPyXP2",
-      "cost": "25",
+      "cost": "5",
       "decimals": "6",
       "ticker": "USDC"
     }
   },
   "mainnet": {
-    "programId": "9v8BjHdGcmAqEyZGt6zgC94R3AmVTbK4hT6w7TFzgaSs",
+    "programId": "DYZTsZh8GjcaAP75kuhY6byXS66v97riot8adtUibryh",
     "encryptionKey": "my-super-secret-key-for-devnet",
     "rpcUrl": "https://api.mainnet-beta.solana.com",
     "SOL": {

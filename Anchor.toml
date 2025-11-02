@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-gacha_machine = "9v8BjHdGcmAqEyZGt6zgC94R3AmVTbK4hT6w7TFzgaSs"
+gacha_machine = "DYZTsZh8GjcaAP75kuhY6byXS66v97riot8adtUibryh"
 
 [registry]
 url = "https://api.apr.dev"

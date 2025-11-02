@@ -47,14 +47,14 @@ const RANDOMNESS_KEYPAIR_PATH = path.join(__dirname, "./randomness.json");
 
 // Switchboard on-demand program ID
 const SWITCHBOARD_ON_DEMAND_PID = sb.ON_DEMAND_MAINNET_PID;
+console.log("SWITCHBOARD_ON_DEMAND_PID", SWITCHBOARD_ON_DEMAND_PID);
 
 async function loadSbProgram(
   provider: anchor.Provider
 ): Promise<anchor.Program> {
-  const sbIdl = await anchor.Program.fetchIdl(
-    SWITCHBOARD_ON_DEMAND_PID,
-    provider
-  );
+  const sbProgramId = await sb.getProgramId(provider.connection);
+  console.log("sbProgramId", sbProgramId);
+  const sbIdl = await anchor.Program.fetchIdl(sbProgramId, provider);
   if (!sbIdl) {
     throw new Error("Failed to fetch Switchboard on-demand IDL");
   }

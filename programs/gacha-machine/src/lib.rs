@@ -15,7 +15,7 @@ use switchboard_on_demand::{
     accounts::RandomnessAccountData, get_switchboard_on_demand_program_id,
 };
 
-declare_id!("9v8BjHdGcmAqEyZGt6zgC94R3AmVTbK4hT6w7TFzgaSs");
+declare_id!("DYZTsZh8GjcaAP75kuhY6byXS66v97riot8adtUibryh");
 
 /// Maximum number of keys that can be stored in a gacha machine
 const MAX_KEYS: usize = 500;
@@ -311,7 +311,7 @@ pub mod gacha_machine {
         );
         require!(
             ctx.accounts.gacha_state.pull_count
-                <= ctx.accounts.gacha_state.encrypted_keys.len() as u64,
+                < ctx.accounts.gacha_state.encrypted_keys.len() as u64,
             GachaError::NotEnoughKeys
         );
 
