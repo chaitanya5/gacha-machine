@@ -1,0 +1,1575 @@
+{
+  "address": "E6YvsePGAgE8zeLnDhyZ9Y8LzeRwPDBcAF6vqDyeY4ra",
+  "metadata": {
+    "name": "gacha_machine",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "add_key",
+      "discriminator": [
+        251,
+        19,
+        183,
+        109,
+        168,
+        179,
+        18,
+        195
+      ],
+      "accounts": [
+        {
+          "name": "gacha_state",
+          "docs": [
+            "The gacha machine state to add the key to"
+          ],
+          "writable": true
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "Admin account (must match gacha_state.admin)"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "gacha_state"
+          ]
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for reallocation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "encrypted_key",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "add_payment_config",
+      "discriminator": [
+        80,
+        220,
+        248,
+        249,
+        13,
+        230,
+        87,
+        84
+      ],
+      "accounts": [
+        {
+          "name": "payment_config",
+          "docs": [
+            "The payment config account to create (PDA)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gacha_state"
+              },
+              {
+                "kind": "arg",
+                "path": "payment_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gacha_state",
+          "docs": [
+            "The gacha machine state to add the config to"
+          ],
+          "writable": true
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "Admin account (must match gacha_state.admin)"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "gacha_state"
+          ]
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for account operations"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "payment_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "payment_price",
+          "type": "u64"
+        },
+        {
+          "name": "payment_recipient_account",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "finalize",
+      "discriminator": [
+        171,
+        61,
+        218,
+        56,
+        127,
+        115,
+        12,
+        217
+      ],
+      "accounts": [
+        {
+          "name": "gacha_state",
+          "docs": [
+            "The gacha machine state to finalize"
+          ],
+          "writable": true
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "Admin account (must match gacha_state.admin)"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "gacha_state"
+          ]
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for reallocation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "gacha_state",
+          "docs": [
+            "The gacha machine state account (PDA)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  99,
+                  104,
+                  97,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "The admin account that will own the gacha machine"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for account creation"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "pull",
+      "discriminator": [
+        78,
+        119,
+        161,
+        115,
+        9,
+        167,
+        75,
+        125
+      ],
+      "accounts": [
+        {
+          "name": "player_state",
+          "docs": [
+            "Player state account to create for this pull (PDA)"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "gacha_state.pull_count",
+                "account": "GachaState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gacha_state",
+          "docs": [
+            "The gacha machine state"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  99,
+                  104,
+                  97,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payment_config",
+          "docs": [
+            "Payment configuration for this pull"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gacha_state"
+              },
+              {
+                "kind": "account",
+                "path": "payment_config.mint",
+                "account": "PaymentConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "docs": [
+            "User performing the pull"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payment_mint",
+          "docs": [
+            "Payment mint account (validated in instruction logic)"
+          ]
+        },
+        {
+          "name": "user_payment_account",
+          "docs": [
+            "User's payment account (SOL account or token account)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "admin_recipient_account",
+          "docs": [
+            "Admin's recipient account for payments"
+          ],
+          "writable": true
+        },
+        {
+          "name": "randomness_account_data",
+          "docs": [
+            "Switchboard randomness account for verifiable randomness"
+          ]
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program for SOL transfers"
+          ],
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "token_program",
+          "docs": [
+            "Token program for SPL token transfers (optional)"
+          ],
+          "optional": true,
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "release_decryption_key",
+      "discriminator": [
+        34,
+        140,
+        246,
+        96,
+        249,
+        156,
+        82,
+        72
+      ],
+      "accounts": [
+        {
+          "name": "gacha_state",
+          "docs": [
+            "The gacha machine state to modify"
+          ],
+          "writable": true
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "Admin account (must match gacha_state.admin)"
+          ],
+          "signer": true,
+          "relations": [
+            "gacha_state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "decryption_key",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "remove_payment_config",
+      "discriminator": [
+        221,
+        159,
+        113,
+        127,
+        221,
+        147,
+        4,
+        76
+      ],
+      "accounts": [
+        {
+          "name": "payment_config",
+          "docs": [
+            "The payment config account to close"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "gacha_state"
+              },
+              {
+                "kind": "arg",
+                "path": "payment_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gacha_state",
+          "docs": [
+            "The gacha machine state to update"
+          ],
+          "writable": true
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "Admin account (must match gacha_state.admin)"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "gacha_state"
+          ]
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "System program"
+          ],
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "payment_mint",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "set_halted",
+      "discriminator": [
+        153,
+        114,
+        136,
+        116,
+        7,
+        134,
+        47,
+        12
+      ],
+      "accounts": [
+        {
+          "name": "gacha_state",
+          "docs": [
+            "The gacha machine state to modify"
+          ],
+          "writable": true
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "Admin account (must match gacha_state.admin)"
+          ],
+          "signer": true,
+          "relations": [
+            "gacha_state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "halted",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "set_paused",
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "gacha_state",
+          "docs": [
+            "The gacha machine state to modify"
+          ],
+          "writable": true
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "Admin account (must match gacha_state.admin)"
+          ],
+          "signer": true,
+          "relations": [
+            "gacha_state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "settle",
+      "discriminator": [
+        175,
+        42,
+        185,
+        87,
+        144,
+        131,
+        102,
+        212
+      ],
+      "accounts": [
+        {
+          "name": "player_state",
+          "docs": [
+            "Player state account for this settlement"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              },
+              {
+                "kind": "account",
+                "path": "player_state.nonce",
+                "account": "PlayerState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gacha_state",
+          "docs": [
+            "The gacha machine state"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  99,
+                  104,
+                  97,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  101
+                ]
+              }
+            ]
+          },
+          "relations": [
+            "player_state"
+          ]
+        },
+        {
+          "name": "user",
+          "docs": [
+            "User who performed the original pull"
+          ],
+          "signer": true,
+          "relations": [
+            "player_state"
+          ]
+        },
+        {
+          "name": "randomness_account_data",
+          "docs": [
+            "Switchboard randomness account (must match the one used in pull)"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "transfer_admin",
+      "discriminator": [
+        42,
+        242,
+        66,
+        106,
+        228,
+        10,
+        111,
+        156
+      ],
+      "accounts": [
+        {
+          "name": "gacha_state",
+          "docs": [
+            "The gacha machine state to modify"
+          ],
+          "writable": true
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "Admin account (must match gacha_state.admin)"
+          ],
+          "signer": true,
+          "relations": [
+            "gacha_state"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_admin",
+          "type": "pubkey"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "GachaState",
+      "discriminator": [
+        44,
+        12,
+        125,
+        41,
+        74,
+        152,
+        201,
+        49
+      ]
+    },
+    {
+      "name": "PaymentConfig",
+      "discriminator": [
+        252,
+        166,
+        185,
+        239,
+        186,
+        79,
+        212,
+        152
+      ]
+    },
+    {
+      "name": "PlayerState",
+      "discriminator": [
+        56,
+        3,
+        60,
+        86,
+        174,
+        16,
+        244,
+        195
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AdminTransferred",
+      "discriminator": [
+        255,
+        147,
+        182,
+        5,
+        199,
+        217,
+        38,
+        179
+      ]
+    },
+    {
+      "name": "DecryptionKeyReleased",
+      "discriminator": [
+        100,
+        4,
+        3,
+        44,
+        161,
+        25,
+        32,
+        72
+      ]
+    },
+    {
+      "name": "GachaFinalized",
+      "discriminator": [
+        152,
+        76,
+        242,
+        27,
+        127,
+        169,
+        121,
+        33
+      ]
+    },
+    {
+      "name": "GachaHalted",
+      "discriminator": [
+        186,
+        96,
+        119,
+        99,
+        161,
+        227,
+        76,
+        147
+      ]
+    },
+    {
+      "name": "GachaInitialized",
+      "discriminator": [
+        0,
+        246,
+        231,
+        78,
+        250,
+        55,
+        141,
+        152
+      ]
+    },
+    {
+      "name": "GachaPaused",
+      "discriminator": [
+        57,
+        131,
+        11,
+        225,
+        112,
+        222,
+        73,
+        61
+      ]
+    },
+    {
+      "name": "GachaPulled",
+      "discriminator": [
+        126,
+        0,
+        127,
+        144,
+        38,
+        241,
+        19,
+        203
+      ]
+    },
+    {
+      "name": "GachaResult",
+      "discriminator": [
+        200,
+        175,
+        238,
+        99,
+        53,
+        184,
+        91,
+        154
+      ]
+    },
+    {
+      "name": "KeyAdded",
+      "discriminator": [
+        37,
+        132,
+        98,
+        148,
+        227,
+        171,
+        151,
+        16
+      ]
+    },
+    {
+      "name": "PaymentConfigAdded",
+      "discriminator": [
+        104,
+        58,
+        90,
+        15,
+        94,
+        173,
+        178,
+        125
+      ]
+    },
+    {
+      "name": "PaymentConfigRemoved",
+      "discriminator": [
+        30,
+        111,
+        8,
+        174,
+        66,
+        18,
+        75,
+        128
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "GachaIsEmpty",
+      "msg": "The gacha machine is out of keys."
+    },
+    {
+      "code": 6001,
+      "name": "AlreadySettled",
+      "msg": "This pull request has already been settled."
+    },
+    {
+      "code": 6002,
+      "name": "NoKeysInPool",
+      "msg": "No keys were added to the pool before finalizing."
+    },
+    {
+      "code": 6003,
+      "name": "EmptyKeyProvided",
+      "msg": "Cannot add an empty key."
+    },
+    {
+      "code": 6004,
+      "name": "GachaNotFinalized",
+      "msg": "The gacha machine has not been finalized by the admin yet."
+    },
+    {
+      "code": 6005,
+      "name": "GachaAlreadyFinalized",
+      "msg": "The gacha machine has already been finalized and cannot be modified."
+    },
+    {
+      "code": 6006,
+      "name": "NotEnoughKeys",
+      "msg": "Not enough keys available for more pulls."
+    },
+    {
+      "code": 6007,
+      "name": "InvalidSwitchboardAccount",
+      "msg": "The provided Switchboard account is invalid or owned by the wrong program."
+    },
+    {
+      "code": 6008,
+      "name": "RandomnessNotResolved",
+      "msg": "Randomness has not been resolved by the oracle yet."
+    },
+    {
+      "code": 6009,
+      "name": "RandomnessExpired",
+      "msg": "Randomness has been expired."
+    },
+    {
+      "code": 6010,
+      "name": "RandomnessNotReady",
+      "msg": "Randomness value not ready yet."
+    },
+    {
+      "code": 6011,
+      "name": "SlotNotPassed",
+      "msg": "Cannot settle in the same slot as the pull. Please wait for the next slot."
+    },
+    {
+      "code": 6012,
+      "name": "GachaPaused",
+      "msg": "The gacha machine is currently paused by the admin to prevent further pulling."
+    },
+    {
+      "code": 6013,
+      "name": "GachaHalted",
+      "msg": "The gacha machine is currently paused by the admin to prevent further settling."
+    },
+    {
+      "code": 6014,
+      "name": "GachaNotComplete",
+      "msg": "The gacha machine is not completeley settled."
+    },
+    {
+      "code": 6015,
+      "name": "KeyPoolFull",
+      "msg": "The key pool has reached its maximum capacity."
+    },
+    {
+      "code": 6016,
+      "name": "IndexOutOfBounds",
+      "msg": "The selected key index was out of bounds. This should not happen."
+    },
+    {
+      "code": 6017,
+      "name": "InvalidRandomnessValue",
+      "msg": "The randomness value from the oracle was invalid."
+    },
+    {
+      "code": 6018,
+      "name": "InvalidRandomnessAccount",
+      "msg": "Invalid randomness account address."
+    },
+    {
+      "code": 6019,
+      "name": "InvalidRandomnessPlayerAccount",
+      "msg": "Invalid randomness player account."
+    },
+    {
+      "code": 6020,
+      "name": "InvalidRandomnessOwner",
+      "msg": "Randomness account is not owned by Switchboard."
+    },
+    {
+      "code": 6021,
+      "name": "InvalidPaymentConfig",
+      "msg": "The payment config account is invalid"
+    },
+    {
+      "code": 6022,
+      "name": "IncorrectOwner",
+      "msg": "Incorrect account/program owner"
+    },
+    {
+      "code": 6023,
+      "name": "AccountMismatch",
+      "msg": "Mismatched accounts found"
+    },
+    {
+      "code": 6024,
+      "name": "InsufficientFunds",
+      "msg": "Insufficient funds"
+    },
+    {
+      "code": 6025,
+      "name": "MintMismatch",
+      "msg": "Invalid Mint account"
+    },
+    {
+      "code": 6026,
+      "name": "TokenProgramMissing",
+      "msg": "Token Program Missing"
+    }
+  ],
+  "types": [
+    {
+      "name": "AdminTransferred",
+      "docs": [
+        "Emitted when admin privileges are transferred"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous_admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "gacha_state",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DecryptionKeyReleased",
+      "docs": [
+        "Emitted when decryption key is released"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "decryption_key",
+            "type": "string"
+          },
+          {
+            "name": "gacha_state",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GachaFinalized",
+      "docs": [
+        "Emitted when the gacha machine is finalized"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_keys",
+            "type": "u16"
+          },
+          {
+            "name": "gacha_state",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GachaHalted",
+      "docs": [
+        "Emitted when the gacha machine is halted or unhalted"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "halted",
+            "type": "bool"
+          },
+          {
+            "name": "gacha_state",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GachaInitialized",
+      "docs": [
+        "Emitted when a new gacha machine is initialized"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "gacha_state",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GachaPaused",
+      "docs": [
+        "Emitted when the gacha machine is paused or unpaused"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "gacha_state",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GachaPulled",
+      "docs": [
+        "Emitted when a user performs a pull"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "payment_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "gacha_state",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GachaResult",
+      "docs": [
+        "Emitted when a pull is settled with a result"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "type": "pubkey"
+          },
+          {
+            "name": "key_index",
+            "type": "u16"
+          },
+          {
+            "name": "encrypted_key",
+            "type": "string"
+          },
+          {
+            "name": "gacha_state",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GachaState",
+      "docs": [
+        "Main state account for a gacha machine",
+        "",
+        "Stores all configuration, keys, and operational state for a gacha instance.",
+        "Uses PDAs for deterministic addressing and supports dynamic resizing."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "docs": [
+              "Public key of the admin who controls this gacha machine"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for this account"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "is_finalized",
+            "docs": [
+              "Whether the machine has been finalized (no more keys can be added)"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "is_paused",
+            "docs": [
+              "Whether pulls are paused (admin control)"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "is_halted",
+            "docs": [
+              "Whether settlements are halted (emergency control)"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "pull_count",
+            "docs": [
+              "Total number of pulls performed"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "settle_count",
+            "docs": [
+              "Total number of settlements completed"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "encrypted_keys",
+            "docs": [
+              "Pool of encrypted reward keys"
+            ],
+            "type": {
+              "vec": "string"
+            }
+          },
+          {
+            "name": "decryption_key",
+            "type": "string"
+          },
+          {
+            "name": "remaining_indices",
+            "docs": [
+              "Remaining indices for fair randomization (Fisher-Yates approach)"
+            ],
+            "type": {
+              "vec": "u16"
+            }
+          },
+          {
+            "name": "payment_configs",
+            "docs": [
+              "List of valid payment configuration accounts"
+            ],
+            "type": {
+              "vec": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "KeyAdded",
+      "docs": [
+        "Emitted when a key is added to the gacha machine"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "key",
+            "type": "string"
+          },
+          {
+            "name": "total_keys",
+            "type": "u16"
+          },
+          {
+            "name": "gacha_state",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentConfig",
+      "docs": [
+        "Configuration for a payment method accepted by the gacha machine",
+        "",
+        "Defines how users can pay for pulls, including the token type, price, and destination.",
+        "Supports both native SOL and SPL tokens."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "gacha_state",
+            "docs": [
+              "Reference to the gacha machine this config belongs to"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "docs": [
+              "Token mint (SystemProgram::id() for SOL, mint pubkey for SPL tokens)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "price",
+            "docs": [
+              "Price in lamports (for SOL) or smallest token units (for SPL)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "admin_recipient_account",
+            "docs": [
+              "Destination account for payments (admin pubkey for SOL, ATA for SPL)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for this account"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentConfigAdded",
+      "docs": [
+        "Emitted when a payment configuration is added"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "payment_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "payment_price",
+            "type": "u64"
+          },
+          {
+            "name": "payment_recipient_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "gacha_state",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentConfigRemoved",
+      "docs": [
+        "Emitted when a payment configuration is removed"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "payment_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "gacha_state",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerState",
+      "docs": [
+        "Player state for tracking individual pulls and settlements",
+        "",
+        "Each pull creates a unique PlayerState account that persists until settlement.",
+        "Contains all information needed to verify and complete the reward process."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "user",
+            "docs": [
+              "Public key of the user who performed the pull"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "gacha_state",
+            "docs": [
+              "Reference to the gacha machine used"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "randomness_account",
+            "docs": [
+              "Switchboard randomness account used for this pull"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "payment_mint",
+            "docs": [
+              "Payment mint used for this pull"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "is_settled",
+            "docs": [
+              "Whether this pull has been settled"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "result_index",
+            "docs": [
+              "Index of the winning key (set during settlement)"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "winning_encrypted_key",
+            "docs": [
+              "The actual encrypted key won (set during settlement)"
+            ],
+            "type": "string"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed for this account"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "pull_slot",
+            "docs": [
+              "Slot when the pull was performed (for randomness validation)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "nonce",
+            "docs": [
+              "Nonce from gacha machine (for PDA derivation)"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}
