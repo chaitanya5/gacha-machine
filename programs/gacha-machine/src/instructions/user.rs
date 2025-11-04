@@ -57,7 +57,7 @@ pub fn pull(ctx: Context<Pull>) -> Result<()> {
     require!(
         clock.slot >= randomness_data.seed_slot
             && clock.slot - randomness_data.seed_slot <= MAX_SLOT_DIFFERENCE,
-        GachaError::RandomnessNotCurrent
+        GachaError::RandomnessNotReady
     );
 
     // ============ PAYMENT PROCESSING ============

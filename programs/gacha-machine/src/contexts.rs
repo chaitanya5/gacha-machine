@@ -186,7 +186,7 @@ pub struct Pull<'info> {
     /// Switchboard randomness account for verifiable randomness
     /// CHECK: Validated to be owned by Switchboard program
     #[account(
-        owner = get_switchboard_on_demand_program_id()
+        owner = get_switchboard_on_demand_program_id() @ GachaError::InvalidRandomnessOwner
     )]
     pub randomness_account_data: AccountInfo<'info>,
 
@@ -217,8 +217,8 @@ pub struct Settle<'info> {
     /// Switchboard randomness account (must match the one used in pull)
     /// CHECK: Address must match player_state.randomness_account and be owned by Switchboard
     #[account(
-        address = player_state.randomness_account,
-        owner = get_switchboard_on_demand_program_id()
+        address = player_state.randomness_account @ GachaError::InvalidRandomnessPlayerAccount,
+        owner = get_switchboard_on_demand_program_id() @ GachaError::InvalidRandomnessOwner
     )]
     pub randomness_account_data: AccountInfo<'info>,
 }

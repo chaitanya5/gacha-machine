@@ -87,3 +87,11 @@ pub struct GachaResult {
     pub encrypted_key: String,
     pub gacha_state: Pubkey,
 }
+
+/// Emitted when decryption key is released
+#[event]
+pub struct DecryptionKeyReleased {
+    pub admin: Pubkey,
+    pub decryption_key: String,
+    pub gacha_state: Pubkey,
+}

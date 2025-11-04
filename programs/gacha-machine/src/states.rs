@@ -26,6 +26,8 @@ pub struct GachaState {
     pub settle_count: u64,
     /// Pool of encrypted reward keys
     pub encrypted_keys: Vec<String>,
+    // Decryption Key, will be revealed after all pulls(max_len: 120 )
+    pub decryption_key: String,
     /// Remaining indices for fair randomization (Fisher-Yates approach)
     pub remaining_indices: Vec<u16>,
     /// List of valid payment configuration accounts
@@ -42,6 +44,7 @@ impl GachaState {
     + 8 // pull_count
     + 8 // settle_count
     + 4 // encrypted_keys vector discriminator (empty initially)
+    + 4 + 120 // decryption_key (discriminator + max_len)
     + 4 // remaining_indices vector discriminator (empty initially)
     + 4; // payment_configs vector discriminator (empty initially)
 }

@@ -252,3 +252,35 @@ pub fn transfer_admin(ctx: Context<AdminAction>, new_admin: Pubkey) -> Result<()
     });
     Ok(())
 }
+
+/// Release decryption key
+///
+/// Admin uploads the decryption key.
+/// Admin does this operation when all the pulls are settled.
+///
+/// Args:
+/// - ctx: Context containing gacha_state to modify
+/// - decryption_key: Decryption key for the list of encrypted NFTs(Ensure max_len = 120)
+///
+/// Returns: Result indicating success or failure
+pub fn release_decryption_key(ctx: Context<AdminAction>, decryption_key: String) -> Result<()> {
+    let gacha_state = &mut ctx.accounts.gacha_state;
+
+    // Validation: ensure gacha machine is complete
+    require_eq!(
+        gacha_state.settle_count,
+        gacha_state.encrypted_keys.len() as u64,
+        GachaError::GachaNotComplete
+    );
+
+    // Add the key to the pool
+    gacha_state.decryption_key = decryption_key.clone();
+
+    emit!(DecryptionKeyReleased {
+        admin: ctx.accounts.admin.key(),
+        decryption_key: decryption_key,
+        gacha_state: gacha_state.key()
+    });
+
+    Ok(())
+}

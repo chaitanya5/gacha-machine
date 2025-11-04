@@ -27,7 +27,7 @@ pub use events::*;
 pub use helpers::*;
 pub use states::*;
 
-declare_id!("9eceahYwcQX6R8c7oyn9srhYgqH34YwdHUVYgwDSTXEg");
+declare_id!("6CqbYs5CWkA54CWaZwkCw2rKEuFZ9uVr65Xoq6Fi7Te3");
 
 #[program]
 pub mod gacha_machine {
@@ -76,6 +76,10 @@ pub mod gacha_machine {
 
     pub fn transfer_admin(ctx: Context<AdminAction>, new_admin: Pubkey) -> Result<()> {
         instructions::transfer_admin(ctx, new_admin)
+    }
+
+    pub fn release_decryption_key(ctx: Context<AdminAction>, decryption_key: String) -> Result<()> {
+        instructions::release_decryption_key(ctx, decryption_key)
     }
 
     pub fn pull(ctx: Context<Pull>) -> Result<()> {

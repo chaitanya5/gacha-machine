@@ -26,22 +26,28 @@ pub enum GachaError {
     RandomnessNotResolved,
     #[msg("Randomness has been expired.")]
     RandomnessExpired,
-    #[msg("The randomness seed is for a past slot and is no longer valid for a new pull.")]
-    RandomnessNotCurrent,
+    #[msg("Randomness value not ready yet.")]
+    RandomnessNotReady,
     #[msg("Cannot settle in the same slot as the pull. Please wait for the next slot.")]
     SlotNotPassed,
     #[msg("The gacha machine is currently paused by the admin to prevent further pulling.")]
     GachaPaused,
     #[msg("The gacha machine is currently paused by the admin to prevent further settling.")]
     GachaHalted,
+    #[msg("The gacha machine is not completeley settled.")]
+    GachaNotComplete,
     #[msg("The key pool has reached its maximum capacity.")]
     KeyPoolFull,
     #[msg("The selected key index was out of bounds. This should not happen.")]
     IndexOutOfBounds,
     #[msg("The randomness value from the oracle was invalid.")]
     InvalidRandomnessValue,
-    #[msg("The randomness account is invalid")]
+    #[msg("Invalid randomness account address.")]
     InvalidRandomnessAccount,
+    #[msg("Invalid randomness player account.")]
+    InvalidRandomnessPlayerAccount,
+    #[msg("Randomness account is not owned by Switchboard.")]
+    InvalidRandomnessOwner,
     #[msg("The payment config account is invalid")]
     InvalidPaymentConfig,
     #[msg("Incorrect account/program owner")]

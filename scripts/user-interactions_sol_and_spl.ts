@@ -239,7 +239,10 @@ export async function pullGacha(
   userPrivateKey: string,
   currency: string,
   network: string
-): Promise<void> {
+): Promise<{
+  pullTx: string;
+  randomnessAccount: string;
+}> {
   // Convert private key to keypair
   const user = keypairFromPrivateKey(userPrivateKey);
   console.log(`\n🎲 ${user.publicKey.toBase58()} is pulling the gacha...`);
@@ -335,6 +338,8 @@ export async function pullGacha(
   console.log(
     `📝 Settle command: npx ts-node user-interactions_sol_and_spl.ts settle "${userPrivateKey}" ${pullCount.toString()} ${randomness.pubkey.toBase58()}`
   );
+
+  return { pullTx, randomnessAccount: randomness.pubkey.toBase58() };
 }
 
 /**

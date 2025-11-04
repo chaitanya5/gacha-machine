@@ -23,12 +23,12 @@
     }
   },
   "mainnet": {
-    "programId": "9eceahYwcQX6R8c7oyn9srhYgqH34YwdHUVYgwDSTXEg",
+    "programId": "J6safRzji6peZyYvab9CGdt7Yjst76X4NP549WtdFjQd",
     "encryptionKey": "my-super-secret-key-for-devnet",
     "rpcUrl": "https://api.mainnet-beta.solana.com",
     "SOL": {
       "mint": "11111111111111111111111111111111",
-      "cost": "0.0012345",
+      "cost": "0.0065",
       "decimals": "9",
       "ticker": "SOL"
     },
