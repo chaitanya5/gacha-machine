@@ -314,7 +314,7 @@ export async function pullGacha(userPrivateKey, currency, network) {
     `💡 Save this randomness account address for settling with Switchboard!`
   );
   console.log(
-    `📝 Settle command: npx ts-node user-interactions_sol_and_spl.ts settle "${userPrivateKey}" ${pullCount.toString()} ${randomness.pubkey.toBase58()}`
+    `📝 Settle command: npx ts-node src/user-interactions.ts settle "${userPrivateKey}" ${pullCount.toString()} ${randomness.pubkey.toBase58()} ${network}`
   );
 
   return { pullTx, randomnessAccount: randomness.pubkey.toBase58() };
