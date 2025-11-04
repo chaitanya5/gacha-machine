@@ -24,6 +24,8 @@ pub enum GachaError {
     InvalidSwitchboardAccount,
     #[msg("Randomness has not been resolved by the oracle yet.")]
     RandomnessNotResolved,
+    #[msg("Randomness has been expired.")]
+    RandomnessExpired,
     #[msg("The randomness seed is for a past slot and is no longer valid for a new pull.")]
     RandomnessNotCurrent,
     #[msg("Cannot settle in the same slot as the pull. Please wait for the next slot.")]

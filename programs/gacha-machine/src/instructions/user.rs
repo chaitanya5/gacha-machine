@@ -135,6 +135,12 @@ pub fn settle(ctx: Context<Settle>) -> Result<()> {
         RandomnessAccountData::parse(ctx.accounts.randomness_account_data.data.borrow())
             .map_err(|_| GachaError::InvalidRandomnessAccount)?;
 
+    require_eq!(
+        randomness_data.seed_slot,
+        player_state.pull_slot,
+        GachaError::RandomnessExpired
+    );
+
     let random_value_bytes = randomness_data
         .get_value(clock.slot)
         .map_err(|_| GachaError::RandomnessNotResolved)?;
