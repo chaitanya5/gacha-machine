@@ -389,6 +389,8 @@ async function settleGacha(
   }
 
   console.log(`✅ Settle successful! Transaction: ${settleTx}`);
+
+  return { settleTx };
 }
 
 /**
