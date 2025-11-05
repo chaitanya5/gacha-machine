@@ -5,7 +5,7 @@ import {
   keypairFromPrivateKey,
 } from "./utils.js";
 
-async function checkPaymentConfigs(network: string) {
+async function checkPaymentConfigs(network) {
   const dummyKeypair = Keypair.generate();
   const { client } = createAnchorProgramAndClient(network, dummyKeypair);
 
@@ -13,7 +13,7 @@ async function checkPaymentConfigs(network: string) {
     const state = await client.getGachaState();
     console.log(
       "Payment configs PDAs:",
-      state.paymentConfigs.map((p: any) => p.toString())
+      state.paymentConfigs.map((p) => p.toString())
     );
 
     for (const configPda of state.paymentConfigs) {
@@ -26,11 +26,11 @@ async function checkPaymentConfigs(network: string) {
         console.log(`  - price: ${config.price}`);
         console.log(`  - admin recipient: ${config.adminRecipientAccount}`);
         console.log("");
-      } catch (e: any) {
+      } catch (e) {
         console.log(`Failed to fetch config ${configPda}: ${e.message}`);
       }
     }
-  } catch (e: any) {
+  } catch (e) {
     console.error("Error:", e.message);
   }
 }
