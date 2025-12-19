@@ -52,7 +52,7 @@ Ensure that you have the necessary Solana tools installed and configured. A file
 
 ```bash
 # Fund the new wallet (devnet)
-solana airdrop 2 <NEW_PUBLIC_KEY> --url devnet
+solana airdrop 2 -u devnet
 ```
 
 ### Generate New Keypair.
@@ -61,8 +61,10 @@ Create a new Solana keypair for a fresh deployment. This will be the Gacha Machi
 ```bash
 # Generate new keypair
 solana-keygen new -f -o target/deploy/gacha_machine-keypair.json
+```
 
-# Sync the program with the new generated wallet above
+
+# Sync the program with the new generated wallet above. This will update the `Anchor.toml` file with the new program address and also the `programs/gacha-machine/src/lib.rs` file.
 anchor keys sync
 
 # Rebuild as the the program code changed after keys got synced
@@ -83,7 +85,9 @@ anchor deploy --provider.cluster devnet
 ```
 
 ### 2. Run the Deployment Script
-The `deploy.ts` script automates the complete setup process:
+Update the solana program address in the `config/shared.json` in the required network and other configurations. You can find the program address in the `Anchor.toml` file or in the `program/gacha-machine/src/lib.rs` file. The `deploy.ts` script automates the complete setup process:
+
+After updating the program address in `config/shared.json`, run the deployment script:
 
 ```bash
 # For mainnet  
