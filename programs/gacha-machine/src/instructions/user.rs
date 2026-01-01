@@ -35,7 +35,7 @@ pub fn pull(ctx: Context<Pull>) -> Result<()> {
         GachaError::GachaNotFinalized
     );
     require!(
-        ctx.accounts.gacha_state.pull_count < ctx.accounts.gacha_state.encrypted_keys.len() as u64,
+        ctx.accounts.gacha_state.pull_count < ctx.accounts.gacha_state.encrypted_keys.len() as u16,
         GachaError::NotEnoughKeys
     );
 
@@ -159,18 +159,38 @@ pub fn settle(ctx: Context<Settle>) -> Result<()> {
         .remaining_indices
         .swap_remove(selected_index_in_remaining);
 
-    // Get the actual encrypted key from the pool
+    // Get the actual encrypted key from the pool (fixed-size array [u8; KEY_LEN])
     let encrypted_key_from_pool = gacha_state
         .encrypted_keys
         .get(final_key_index as usize)
         .ok_or(GachaError::IndexOutOfBounds)?
         .clone();
 
+    // Convert fixed-size byte array to UTF-8 string.
+    // Trim trailing zero bytes which were used as padding when the key was stored.
+    let trimmed_len = encrypted_key_from_pool
+        .iter()
+        .rposition(|&b| b != 0)
+        .map(|pos| pos + 1)
+        .unwrap_or(0);
+    let winning_string = String::from_utf8(encrypted_key_from_pool[..trimmed_len].to_vec())
+        .map_err(|_| GachaError::InvalidRandomnessValue)?;
+
     // ============ SETTLEMENT COMPLETION ============
     // Update player state with the result
     player_state.is_settled = true;
     player_state.result_index = final_key_index;
-    player_state.winning_encrypted_key = encrypted_key_from_pool;
+
+    // Store the winning encrypted key into the player state.
+    // PlayerState stores the key as a fixed-size [u8; KEY_LEN]. Convert the UTF-8 string
+    // back into the fixed-size representation with zero padding.
+    let win_bytes = winning_string.as_bytes();
+    let mut win_fixed: [u8; KEY_LEN] = [0u8; KEY_LEN];
+    let copy_len = std::cmp::min(KEY_LEN, win_bytes.len());
+    if copy_len > 0 {
+        win_fixed[..copy_len].copy_from_slice(&win_bytes[..copy_len]);
+    }
+    player_state.winning_encrypted_key = winning_string.clone();
 
     // Increment the settlement counter
     gacha_state.settle_count += 1;
@@ -178,7 +198,7 @@ pub fn settle(ctx: Context<Settle>) -> Result<()> {
     emit!(GachaResult {
         user: player_state.user,
         key_index: final_key_index,
-        encrypted_key: player_state.winning_encrypted_key.clone(),
+        encrypted_key: winning_string.clone(),
         gacha_state: ctx.accounts.gacha_state.key(),
     });
 

@@ -137,8 +137,17 @@ pub fn add_key(ctx: Context<AddKey>, encrypted_key: String) -> Result<()> {
         GachaError::KeyPoolFull
     );
 
-    // Add the key to the pool
-    gacha_state.encrypted_keys.push(encrypted_key.clone());
+    // Convert String to fixed-size byte array [u8; KEY_LEN] and copy (pad with zeros if needed,
+    // truncate if the provided string is longer than KEY_LEN).
+    let key_bytes = encrypted_key.as_bytes();
+    let mut key_arr = [0u8; KEY_LEN];
+    let copy_len = std::cmp::min(KEY_LEN, key_bytes.len());
+    if copy_len > 0 {
+        key_arr[..copy_len].copy_from_slice(&key_bytes[..copy_len]);
+    }
+
+    // Add the fixed-size key to the pool
+    gacha_state.encrypted_keys.push(key_arr);
 
     emit!(KeyAdded {
         admin: ctx.accounts.admin.key(),
@@ -269,7 +278,7 @@ pub fn release_decryption_key(ctx: Context<AdminAction>, decryption_key: String)
     // Validation: ensure gacha machine is complete
     require_eq!(
         gacha_state.settle_count,
-        gacha_state.encrypted_keys.len() as u64,
+        gacha_state.encrypted_keys.len() as u16,
         GachaError::GachaNotComplete
     );
 

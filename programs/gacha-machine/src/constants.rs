@@ -5,6 +5,9 @@
 /// Maximum number of keys that can be stored in a gacha machine
 pub const MAX_KEYS: usize = 500;
 
+/// Maximum length of each key
+pub const KEY_LEN: usize = 100;
+
 /// Maximum slot difference allowed for randomness validation
 /// This ensures randomness data is recent and valid
 pub const MAX_SLOT_DIFFERENCE: u64 = 20;

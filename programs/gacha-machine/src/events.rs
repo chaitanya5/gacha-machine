@@ -11,6 +11,10 @@ pub struct GachaInitialized {
 }
 
 /// Emitted when a key is added to the gacha machine
+///
+/// Note: `key` is emitted as a UTF-8 string. The program ensures that any bytes
+/// emitted here have been validated and converted to a UTF-8 `String` before
+/// emitting this event.
 #[event]
 pub struct KeyAdded {
     pub admin: Pubkey,
@@ -73,13 +77,17 @@ pub struct PaymentConfigRemoved {
 #[event]
 pub struct GachaPulled {
     pub user: Pubkey,
-    pub nonce: u64,
+    pub nonce: u16,
     pub payment_mint: Pubkey,
     pub price: u64,
     pub gacha_state: Pubkey,
 }
 
 /// Emitted when a pull is settled with a result
+///
+/// Note: `encrypted_key` is a UTF-8 string. The program converts stored bytes
+/// into a validated UTF-8 `String` before emitting this event. If conversion
+/// fails, the program should handle the error and avoid emitting invalid UTF-8.
 #[event]
 pub struct GachaResult {
     pub user: Pubkey,
@@ -89,6 +97,8 @@ pub struct GachaResult {
 }
 
 /// Emitted when decryption key is released
+///
+/// Note: `decryption_key` is expected to be valid UTF-8.
 #[event]
 pub struct DecryptionKeyReleased {
     pub admin: Pubkey,

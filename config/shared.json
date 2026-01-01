@@ -23,7 +23,7 @@
     }
   },
   "mainnet": {
-    "programId": "J6safRzji6peZyYvab9CGdt7Yjst76X4NP549WtdFjQd",
+    "programId": "nXtdsV4Xx1eZwLEAqWjw6EzBCqAVva7t3SoT7dMjkwH",
     "encryptionKey": "my-super-secret-key-for-devnet",
     "rpcUrl": "https://api.mainnet-beta.solana.com",
     "SOL": {

@@ -1,3 +1,4 @@
+use crate::constants::KEY_LEN;
 /// States module for the Gacha Machine program
 ///
 /// Contains all account structures and their implementations used to store
@@ -21,11 +22,11 @@ pub struct GachaState {
     /// Whether settlements are halted (emergency control)
     pub is_halted: bool,
     /// Total number of pulls performed
-    pub pull_count: u64,
+    pub pull_count: u16,
     /// Total number of settlements completed
-    pub settle_count: u64,
-    /// Pool of encrypted reward keys
-    pub encrypted_keys: Vec<String>,
+    pub settle_count: u16,
+    /// Pool of encrypted reward keys stored as fixed-size byte arrays
+    pub encrypted_keys: Vec<[u8; KEY_LEN]>,
     // Decryption Key, will be revealed after all pulls(max_len: 120 )
     pub decryption_key: String,
     /// Remaining indices for fair randomization (Fisher-Yates approach)
@@ -43,7 +44,7 @@ impl GachaState {
     + 1 // is_halted
     + 8 // pull_count
     + 8 // settle_count
-    + 4 // encrypted_keys vector discriminator (empty initially)
+    + 4 // encrypted_keys vector discriminator (empty initially; elements are [u8; KEY_LEN] when present)
     + 4 + 120 // decryption_key (discriminator + max_len)
     + 4 // remaining_indices vector discriminator (empty initially)
     + 4; // payment_configs vector discriminator (empty initially)
@@ -76,7 +77,7 @@ pub struct PlayerState {
     /// Slot when the pull was performed (for randomness validation)
     pub pull_slot: u64,
     /// Nonce from gacha machine (for PDA derivation)
-    pub nonce: u64,
+    pub nonce: u16,
 }
 
 /// Configuration for a payment method accepted by the gacha machine

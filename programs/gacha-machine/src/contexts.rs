@@ -97,8 +97,10 @@ pub struct AddKey<'info> {
     #[account(
         mut,
         has_one = admin,
-        // Reallocate to accommodate new key (4 bytes for string length + key data)
-        realloc = gacha_state.to_account_info().data_len() + 4 + encrypted_key.len(),
+        // Reallocate to accommodate a new fixed-size key element ([u8; KEY_LEN]).
+        // The serialized size of the element is KEY_LEN bytes, so increase the account
+        // data length by KEY_LEN to store one more key.
+        realloc = gacha_state.to_account_info().data_len() + KEY_LEN,
         realloc::payer = admin,
         realloc::zero = false,
         constraint = gacha_state.encrypted_keys.len() < MAX_KEYS @ GachaError::KeyPoolFull

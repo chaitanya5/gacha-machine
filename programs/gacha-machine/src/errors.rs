@@ -38,10 +38,14 @@ pub enum GachaError {
     GachaNotComplete,
     #[msg("The key pool has reached its maximum capacity.")]
     KeyPoolFull,
+    #[msg("The provided key exceeds maximum allowed length.")]
+    KeyTooLong,
     #[msg("The selected key index was out of bounds. This should not happen.")]
     IndexOutOfBounds,
     #[msg("The randomness value from the oracle was invalid.")]
     InvalidRandomnessValue,
+    #[msg("The encrypted key contains invalid UTF-8 data.")]
+    InvalidKey,
     #[msg("Invalid randomness account address.")]
     InvalidRandomnessAccount,
     #[msg("Invalid randomness player account.")]
