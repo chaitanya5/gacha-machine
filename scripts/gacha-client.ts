@@ -62,8 +62,8 @@ export class GachaClient {
       bump: gachaState.bump,
       isFinalized: gachaState.isFinalized,
       isPaused: gachaState.isPaused,
-      pullCount: gachaState.pullCount.toNumber(),
-      settleCount: gachaState.settleCount.toNumber(),
+      pullCount: gachaState.pullCount,
+      settleCount: gachaState.settleCount,
       encryptedKeys: gachaState.encryptedKeys,
       remainingIndices: gachaState.remainingIndices,
       paymentConfigs: gachaState.paymentConfigs.map((config) =>
@@ -92,8 +92,11 @@ export class GachaClient {
       [Buffer.from("player_state"), user.toBuffer(), nonce.toBuffer("le", 8)],
       this.program.programId
     );
+
+    console.log("playerStatePDA", playerStatePDA);
     const playerState = await this.program.account.playerState.fetch(
-      playerStatePDA
+      // playerStatePDA
+      "AwFX9i87Tn13uAE1eFKxcpDKxb14oqgyRzycYhscZZ9b"
     );
     return {
       user: playerState.user.toBase58(),
@@ -105,7 +108,7 @@ export class GachaClient {
       winningEncryptedKey: playerState.winningEncryptedKey,
       bump: playerState.bump,
       pullSlot: playerState.pullSlot.toNumber(),
-      nonce: playerState.nonce.toNumber(),
+      nonce: playerState.nonce,
     };
   }
 

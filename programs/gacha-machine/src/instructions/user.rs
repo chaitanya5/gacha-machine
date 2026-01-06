@@ -126,7 +126,8 @@ pub fn settle(ctx: Context<Settle>) -> Result<()> {
     );
 
     // Check if there are still rewards available
-    let remaining_count = gacha_state.remaining_indices.len();
+    let remaining_count = gacha_state.remaining_count as usize;
+    // let remaining_count = gacha_state.remaining_indices.len();
     require!(remaining_count > 0, GachaError::GachaIsEmpty);
 
     // ============ RANDOMNESS EXTRACTION ============
@@ -155,9 +156,16 @@ pub fn settle(ctx: Context<Settle>) -> Result<()> {
     // ============ REWARD SELECTION ============
     // Use Fisher-Yates shuffle approach: select random index from remaining
     let selected_index_in_remaining = random_u64 as usize % remaining_count;
-    let final_key_index = gacha_state
-        .remaining_indices
-        .swap_remove(selected_index_in_remaining);
+    // let final_key_index = gacha_state
+    //     .remaining_indices
+    //     .swap_remove(selected_index_in_remaining);
+
+    let final_key_index = gacha_state.remaining_indices[selected_index_in_remaining];
+    // Perform "Swap Remove" on the fixed array
+    // Move the last element into the gap we just created
+    let last_element = gacha_state.remaining_indices[remaining_count - 1];
+    gacha_state.remaining_indices[selected_index_in_remaining] = last_element;
+    gacha_state.remaining_count -= 1;
 
     // Get the actual encrypted key from the pool (fixed-size array [u8; KEY_LEN])
     let encrypted_key_from_pool = gacha_state
@@ -190,7 +198,9 @@ pub fn settle(ctx: Context<Settle>) -> Result<()> {
     if copy_len > 0 {
         win_fixed[..copy_len].copy_from_slice(&win_bytes[..copy_len]);
     }
-    player_state.winning_encrypted_key = winning_string.clone();
+
+    player_state.winning_encrypted_key = win_fixed;
+    // player_state.winning_encrypted_key = winning_string.clone();
 
     // Increment the settlement counter
     gacha_state.settle_count += 1;

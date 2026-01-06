@@ -128,7 +128,21 @@ async function populateKeys(
   console.log(`Found ${urls.length} URLs to add.`);
 
   const currentState = await client.getGachaState();
-  const existingEncryptedKeys = currentState.encryptedKeys;
+  const existingEncryptedKeysRaw = currentState.encryptedKeys || [];
+
+  // Convert on-chain fixed-size byte arrays (possibly returned as arrays/Buffers)
+  // into UTF-8 strings by trimming trailing zero padding. If the client already
+  // returns strings, keep them as-is.
+  const existingEncryptedKeys = existingEncryptedKeysRaw.map((k: any) => {
+    if (typeof k === "string") return k;
+    // k may be a Buffer, Uint8Array, or number[] — normalize with Buffer
+    const buf = Buffer.from(k);
+    // Trim trailing zero bytes used for padding on-chain
+    let end = buf.length;
+    while (end > 0 && buf[end - 1] === 0) end--;
+    return buf.slice(0, end).toString("utf8");
+  });
+
   console.log(
     `${existingEncryptedKeys.length} keys already present in the contract.`
   );
@@ -141,7 +155,7 @@ async function populateKeys(
   console.log("existingEncryptedKeys", existingEncryptedKeys);
   console.log("allEncryptedUrls", allEncryptedUrls);
 
-  // Filter out URLs that are already added to the gacha
+  // Filter out URLs that are already added to the gacha (string comparison)
   const keysToAdd = allEncryptedUrls.filter(
     (encryptedUrl) => !existingEncryptedKeys.includes(encryptedUrl)
   );

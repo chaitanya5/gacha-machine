@@ -24,6 +24,7 @@
     "@solana/web3.js": "^1.98.4",
     "@switchboard-xyz/on-demand": "^2.16.4",
     "axios": "^1.12.2",
+    "bn.js": "^5.2.2",
     "bs58": "^6.0.0",
     "crypto-js": "^4.2.0",
     "dotenv": "^17.2.3"

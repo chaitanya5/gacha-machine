@@ -24,7 +24,10 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     gacha_state.is_finalized = false;
     gacha_state.pull_count = 0;
     gacha_state.settle_count = 0;
+    gacha_state.keys_count = 0;
+    gacha_state.settle_count = 0;
     gacha_state.is_paused = false;
+    gacha_state.payment_config_count = 0;
 
     emit!(GachaInitialized {
         admin: ctx.accounts.admin.key(),
@@ -54,6 +57,16 @@ pub fn add_payment_config(
     let payment_config = &mut ctx.accounts.payment_config;
     let gacha_state = &mut ctx.accounts.gacha_state;
 
+    msg!("AddPaymentConfig: Start");
+    msg!(
+        "AddPaymentConfig: Current payment_config_count: {}",
+        gacha_state.payment_config_count
+    );
+    msg!(
+        "AddPaymentConfig: Payment configs array length: {}",
+        gacha_state.payment_configs.len()
+    );
+
     // Initialize the payment configuration
     payment_config.gacha_state = gacha_state.key();
     payment_config.mint = payment_mint;
@@ -61,8 +74,35 @@ pub fn add_payment_config(
     payment_config.admin_recipient_account = payment_recipient_account;
     payment_config.bump = ctx.bumps.payment_config;
 
+    let payment_config_count = gacha_state.payment_config_count;
+
+    // Bounds check
+    require!(
+        (gacha_state.payment_config_count as usize) < gacha_state.payment_configs.len(),
+        GachaError::KeyPoolFull // Or define a new error for payment config overflow
+    );
+    msg!("AddPaymentConfig: Passed bounds check");
+
+    // Check for duplicate
+    for i in 0..payment_config_count {
+        if gacha_state.payment_configs[i as usize] == payment_config.key() {
+            msg!(
+                "AddPaymentConfig: Duplicate payment config found at index {}",
+                i
+            );
+            return Err(error!(GachaError::InvalidPaymentConfig));
+        }
+    }
+    msg!("AddPaymentConfig: No duplicates found");
+
     // Add this config to the gacha machine's list of accepted payments
-    gacha_state.payment_configs.push(payment_config.key());
+    gacha_state.payment_configs[payment_config_count as usize] = payment_config.key();
+    gacha_state.payment_config_count += 1;
+
+    msg!(
+        "AddPaymentConfig: Successfully added payment config. New payment_config_count: {}",
+        gacha_state.payment_config_count
+    );
 
     emit!(PaymentConfigAdded {
         admin: ctx.accounts.admin.key(),
@@ -91,13 +131,18 @@ pub fn remove_payment_config(
     let gacha_state = &mut ctx.accounts.gacha_state;
     let payment_config = &ctx.accounts.payment_config;
 
-    // Find and remove the payment config from the gacha_state's payment_configs vector
-    if let Some(index) = gacha_state
-        .payment_configs
-        .iter()
-        .position(|&x| x == payment_config.key())
+    // Only search the first payment_config_count slots
+    if let Some(index) = (0..gacha_state.payment_config_count)
+        .find(|&i| gacha_state.payment_configs[i as usize] == payment_config.key())
     {
-        gacha_state.payment_configs.remove(index);
+        let last = gacha_state.payment_config_count - 1;
+        // Move the last valid config into the removed slot (unless it's already the last)
+        if index != last {
+            gacha_state.payment_configs[index as usize] =
+                gacha_state.payment_configs[last as usize];
+        }
+        gacha_state.payment_configs[last as usize] = Pubkey::default();
+        gacha_state.payment_config_count -= 1;
     } else {
         return Err(error!(GachaError::InvalidPaymentConfig));
     }
@@ -133,13 +178,15 @@ pub fn add_key(ctx: Context<AddKey>, encrypted_key: String) -> Result<()> {
     require!(!gacha_state.is_finalized, GachaError::GachaAlreadyFinalized);
     require!(!encrypted_key.is_empty(), GachaError::EmptyKeyProvided);
     require!(
-        gacha_state.encrypted_keys.len() < MAX_KEYS,
+        gacha_state.keys_count < MAX_KEYS as u16,
         GachaError::KeyPoolFull
     );
 
     // Convert String to fixed-size byte array [u8; KEY_LEN] and copy (pad with zeros if needed,
     // truncate if the provided string is longer than KEY_LEN).
     let key_bytes = encrypted_key.as_bytes();
+    let current_index = gacha_state.keys_count as usize;
+
     let mut key_arr = [0u8; KEY_LEN];
     let copy_len = std::cmp::min(KEY_LEN, key_bytes.len());
     if copy_len > 0 {
@@ -147,7 +194,8 @@ pub fn add_key(ctx: Context<AddKey>, encrypted_key: String) -> Result<()> {
     }
 
     // Add the fixed-size key to the pool
-    gacha_state.encrypted_keys.push(key_arr);
+    gacha_state.encrypted_keys[current_index] = key_arr;
+    gacha_state.keys_count += 1;
 
     emit!(KeyAdded {
         admin: ctx.accounts.admin.key(),
@@ -177,19 +225,34 @@ pub fn finalize(ctx: Context<Finalize>) -> Result<()> {
 
     // Validation: ensure machine is ready for finalization
     require!(!gacha_state.is_finalized, GachaError::GachaAlreadyFinalized);
-    require!(
-        !gacha_state.encrypted_keys.is_empty(),
-        GachaError::NoKeysInPool
-    );
+    // require!(
+    //     !gacha_state.encrypted_keys.is_empty(),
+    //     GachaError::NoKeysInPool
+    // );
 
     // Create indices array for randomized selection (Fisher-Yates shuffle implementation)
-    let total_keys = gacha_state.encrypted_keys.len() as u16;
-    gacha_state.remaining_indices = (0..total_keys).collect();
+    // let total_keys = gacha_state.encrypted_keys.len() as u16;
+    let keys_count = gacha_state.keys_count;
+    let n_usize = keys_count as usize;
+
+    // Fixed-size array replacement for .collect()
+    // We iterate only up to n_usize to fill [0, 1, 2, ... n-1]
+    for (i, slot) in gacha_state
+        .remaining_indices
+        .iter_mut()
+        .take(n_usize)
+        .enumerate()
+    {
+        *slot = i as u16;
+    }
+
+    // gacha_state.remaining_indices = (0..keys_count).collect();
     gacha_state.is_finalized = true;
+    gacha_state.remaining_count = keys_count;
 
     emit!(GachaFinalized {
         admin: ctx.accounts.admin.key(),
-        total_keys,
+        total_keys: keys_count,
         gacha_state: ctx.accounts.gacha_state.key()
     });
 
@@ -282,8 +345,22 @@ pub fn release_decryption_key(ctx: Context<AdminAction>, decryption_key: String)
         GachaError::GachaNotComplete
     );
 
+    // Ensure the decryption key is not empty and less than 100 characters
+    require!(
+        decryption_key.len() > 0 && decryption_key.len() <= KEY_LEN,
+        GachaError::KeyTooLong
+    );
+
+    // Convert the decryption key into the fixed-size representation with zero padding.
+    let key_bytes = decryption_key.as_bytes();
+    let mut win_fixed: [u8; KEY_LEN] = [0u8; KEY_LEN];
+    let copy_len = std::cmp::min(KEY_LEN, key_bytes.len());
+    if copy_len > 0 {
+        win_fixed[..copy_len].copy_from_slice(&key_bytes[..copy_len]);
+    }
+
     // Add the key to the pool
-    gacha_state.decryption_key = decryption_key.clone();
+    gacha_state.decryption_key = win_fixed;
 
     emit!(DecryptionKeyReleased {
         admin: ctx.accounts.admin.key(),

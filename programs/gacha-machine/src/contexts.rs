@@ -49,9 +49,9 @@ pub struct AddPaymentConfig<'info> {
         mut,
         has_one = admin,
         // Reallocate to accommodate new payment config reference(old heap + new account)
-        realloc = gacha_state.to_account_info().data_len() + 32,
-        realloc::payer = admin,
-        realloc::zero = false,
+        // realloc = gacha_state.to_account_info().data_len() + 32,
+        // realloc::payer = admin,
+        // realloc::zero = false,
     )]
     pub gacha_state: Account<'info, GachaState>,
     /// Admin account (must match gacha_state.admin)
@@ -100,9 +100,9 @@ pub struct AddKey<'info> {
         // Reallocate to accommodate a new fixed-size key element ([u8; KEY_LEN]).
         // The serialized size of the element is KEY_LEN bytes, so increase the account
         // data length by KEY_LEN to store one more key.
-        realloc = gacha_state.to_account_info().data_len() + KEY_LEN,
-        realloc::payer = admin,
-        realloc::zero = false,
+        // realloc = gacha_state.to_account_info().data_len() + KEY_LEN,
+        // realloc::payer = admin,
+        // realloc::zero = false,
         constraint = gacha_state.encrypted_keys.len() < MAX_KEYS @ GachaError::KeyPoolFull
     )]
     pub gacha_state: Account<'info, GachaState>,
@@ -121,9 +121,9 @@ pub struct Finalize<'info> {
         mut,
         has_one = admin,
         // Reallocate to accommodate remaining_indices vector (2 bytes per index)
-        realloc = gacha_state.to_account_info().data_len() + (gacha_state.encrypted_keys.len() * 2),
-        realloc::payer = admin,
-        realloc::zero = false,
+        // realloc = gacha_state.to_account_info().data_len() + (gacha_state.encrypted_keys.len() * 2),
+        // realloc::payer = admin,
+        // realloc::zero = false,
     )]
     pub gacha_state: Account<'info, GachaState>,
     /// Admin account (must match gacha_state.admin)

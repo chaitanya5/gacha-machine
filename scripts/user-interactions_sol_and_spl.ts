@@ -437,7 +437,8 @@ async function createSettleInstruction(
   return await gachaProgram.methods
     .settle()
     .accountsPartial({
-      playerState: playerStatePDA,
+      // playerState: playerStatePDA,
+      playerState: "AwFX9i87Tn13uAE1eFKxcpDKxb14oqgyRzycYhscZZ9b",
       gachaState: gachaStatePDA,
       user: userPublicKey,
       randomnessAccountData: randomnessAccount,

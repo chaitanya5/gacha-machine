@@ -27,7 +27,7 @@ pub use events::*;
 pub use helpers::*;
 pub use states::*;
 
-declare_id!("nXtdsV4Xx1eZwLEAqWjw6EzBCqAVva7t3SoT7dMjkwH");
+declare_id!("98hQ4NYYQBcKB1YraPbvzT1k44s8Kcoe7kVxLrqLRxkZ");
 
 #[program]
 pub mod gacha_machine {
