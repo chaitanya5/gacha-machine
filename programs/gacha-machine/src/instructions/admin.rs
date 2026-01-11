@@ -1,30 +1,47 @@
 use anchor_lang::prelude::*;
 
-use crate::{constants::*, contexts::*, errors::GachaError, events::*};
+use crate::{constants::*, contexts::*, errors::GachaError, events::*, helpers::*};
 
 /// ========================================
 /// Admin Instructions
 /// ========================================
 
-/// Initialize a new gacha machine
+/// Initialize the gacha factory
+/// This is the factory that creates gacha machines.
+pub fn initialize_gacha_factory(ctx: Context<InitializeGachaFactory>) -> Result<()> {
+    let gacha_factory = &mut ctx.accounts.gacha_factory;
+
+    // Set the admin as the signer of this transaction
+    gacha_factory.admin = ctx.accounts.admin.key();
+    gacha_factory.gacha_count = 0;
+    gacha_factory.bump = ctx.bumps.gacha_factory;
+
+    emit!(GachaFactoryInitialized {
+        admin: ctx.accounts.admin.key(),
+        gacha_factory: gacha_factory.key(),
+    });
+    Ok(())
+}
+
+/// Creates a new gacha machine
 ///
-/// This instruction creates a new gacha machine with the caller as admin.
-/// The machine starts in an unfinalized state where keys can be added.
+/// This instruction creates a new gacha machine within the factory.
 ///
 /// Args:
 /// - ctx: Context containing gacha_state PDA and admin accounts
 ///
 /// Returns: Result indicating success or failure
-pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+pub fn create_gacha(ctx: Context<CreateGacha>) -> Result<()> {
     let gacha_state = &mut ctx.accounts.gacha_state;
-
     // Set the admin as the signer of this transaction
     gacha_state.admin = ctx.accounts.admin.key();
+    gacha_state.gacha_factory = ctx.accounts.gacha_factory.key();
     gacha_state.bump = ctx.bumps.gacha_state;
     gacha_state.is_finalized = false;
+    gacha_state.is_paused = false;
+    gacha_state.is_halted = false;
     gacha_state.pull_count = 0;
     gacha_state.settle_count = 0;
-    gacha_state.is_paused = false;
 
     emit!(GachaInitialized {
         admin: ctx.accounts.admin.key(),
@@ -62,7 +79,7 @@ pub fn add_payment_config(
     payment_config.bump = ctx.bumps.payment_config;
 
     // Add this config to the gacha machine's list of accepted payments
-    gacha_state.payment_configs.push(payment_config.key());
+    // gacha_state.payment_configs.push(payment_config.key());
 
     emit!(PaymentConfigAdded {
         admin: ctx.accounts.admin.key(),
@@ -88,24 +105,10 @@ pub fn remove_payment_config(
     ctx: Context<RemovePaymentConfig>,
     payment_mint: Pubkey,
 ) -> Result<()> {
-    let gacha_state = &mut ctx.accounts.gacha_state;
-    let payment_config = &ctx.accounts.payment_config;
-
-    // Find and remove the payment config from the gacha_state's payment_configs vector
-    if let Some(index) = gacha_state
-        .payment_configs
-        .iter()
-        .position(|&x| x == payment_config.key())
-    {
-        gacha_state.payment_configs.remove(index);
-    } else {
-        return Err(error!(GachaError::InvalidPaymentConfig));
-    }
-
     emit!(PaymentConfigRemoved {
         admin: ctx.accounts.admin.key(),
         payment_mint,
-        gacha_state: gacha_state.key()
+        gacha_state: ctx.accounts.gacha_state.key()
     });
 
     Ok(())
@@ -128,31 +131,30 @@ pub fn remove_payment_config(
 /// - Must not exceed MAX_KEYS limit
 pub fn add_key(ctx: Context<AddKey>, encrypted_key: String) -> Result<()> {
     let gacha_state = &mut ctx.accounts.gacha_state;
+    let metadata = &mut ctx.accounts.metadata.load_mut()?;
 
     // Validation: ensure machine is in the correct state for adding keys
     require!(!gacha_state.is_finalized, GachaError::GachaAlreadyFinalized);
-    require!(!encrypted_key.is_empty(), GachaError::EmptyKeyProvided);
     require!(
-        gacha_state.encrypted_keys.len() < MAX_KEYS,
+        !encrypted_key.is_empty() && encrypted_key.len() <= MAX_KEY_LEN,
+        GachaError::InvalidKeyLength
+    );
+    require!(
+        metadata.keys_count < MAX_KEYS as u16,
         GachaError::KeyPoolFull
     );
 
-    // Convert String to fixed-size byte array [u8; KEY_LEN] and copy (pad with zeros if needed,
-    // truncate if the provided string is longer than KEY_LEN).
-    let key_bytes = encrypted_key.as_bytes();
-    let mut key_arr = [0u8; KEY_LEN];
-    let copy_len = std::cmp::min(KEY_LEN, key_bytes.len());
-    if copy_len > 0 {
-        key_arr[..copy_len].copy_from_slice(&key_bytes[..copy_len]);
-    }
+    let current_index = metadata.keys_count as usize;
+    let key_arr = string_to_fixed_bytes::<MAX_KEY_LEN>(&encrypted_key); // Use the helper function
 
     // Add the fixed-size key to the pool
-    gacha_state.encrypted_keys.push(key_arr);
+    metadata.encrypted_keys[current_index] = key_arr;
+    metadata.keys_count += 1;
 
     emit!(KeyAdded {
         admin: ctx.accounts.admin.key(),
         key: encrypted_key,
-        total_keys: gacha_state.encrypted_keys.len() as u16,
+        total_keys: metadata.keys_count,
         gacha_state: gacha_state.key()
     });
 
@@ -174,22 +176,30 @@ pub fn add_key(ctx: Context<AddKey>, encrypted_key: String) -> Result<()> {
 /// - At least one key must be in the pool
 pub fn finalize(ctx: Context<Finalize>) -> Result<()> {
     let gacha_state = &mut ctx.accounts.gacha_state;
+    let metadata = &mut ctx.accounts.metadata.load_mut()?;
 
     // Validation: ensure machine is ready for finalization
     require!(!gacha_state.is_finalized, GachaError::GachaAlreadyFinalized);
-    require!(
-        !gacha_state.encrypted_keys.is_empty(),
-        GachaError::NoKeysInPool
-    );
+    require!(metadata.keys_count > 0, GachaError::NoKeysInPool);
 
+    let keys_count = metadata.keys_count;
     // Create indices array for randomized selection (Fisher-Yates shuffle implementation)
-    let total_keys = gacha_state.encrypted_keys.len() as u16;
-    gacha_state.remaining_indices = (0..total_keys).collect();
+    // We iterate only up to n_usize to fill [0, 1, 2, ... n-1]
+    for (i, slot) in metadata
+        .remaining_indices
+        .iter_mut()
+        .take(keys_count as usize)
+        .enumerate()
+    {
+        *slot = i as u16;
+    }
+
+    metadata.remaining_count = keys_count;
     gacha_state.is_finalized = true;
 
     emit!(GachaFinalized {
         admin: ctx.accounts.admin.key(),
-        total_keys,
+        total_keys: keys_count,
         gacha_state: ctx.accounts.gacha_state.key()
     });
 
@@ -273,23 +283,57 @@ pub fn transfer_admin(ctx: Context<AdminAction>, new_admin: Pubkey) -> Result<()
 ///
 /// Returns: Result indicating success or failure
 pub fn release_decryption_key(ctx: Context<AdminAction>, decryption_key: String) -> Result<()> {
-    let gacha_state = &mut ctx.accounts.gacha_state;
+    let metadata = &mut ctx.accounts.metadata.load_mut()?;
+
+    // Validation: ensure decryption key is not empty and its length is valid
+    require!(
+        !decryption_key.is_empty() && decryption_key.len() <= MAX_KEY_LEN,
+        GachaError::InvalidKeyLength
+    );
 
     // Validation: ensure gacha machine is complete
     require_eq!(
-        gacha_state.settle_count,
-        gacha_state.encrypted_keys.len() as u16,
+        ctx.accounts.gacha_state.settle_count,
+        metadata.keys_count,
         GachaError::GachaNotComplete
     );
 
+    let key_arr = string_to_fixed_bytes::<MAX_KEY_LEN>(&decryption_key);
     // Add the key to the pool
-    gacha_state.decryption_key = decryption_key.clone();
+    metadata.decryption_key = key_arr;
 
     emit!(DecryptionKeyReleased {
         admin: ctx.accounts.admin.key(),
         decryption_key: decryption_key,
-        gacha_state: gacha_state.key()
+        gacha_state: ctx.accounts.gacha_state.key()
     });
 
+    Ok(())
+}
+
+/// Initialize the metadata account
+///
+/// This instruction is called after `create_gacha` which will just create a PDA without assigning any data
+pub fn initialize_metadata(_ctx: Context<InitializeMetadata>) -> Result<()> {
+    Ok(())
+}
+
+/// Resize the metadata account to its full size
+///
+/// This instruction is called after `initialize_metadata` to expand the metadata
+/// account from its small initial size to its full size.
+pub fn resize_metadata(_ctx: Context<ResizeMetadata>) -> Result<()> {
+    Ok(())
+}
+
+/// Set the metadata account with default values after it it reaches to its full size
+///
+/// This instruction is called after `resize_metadata`
+pub fn set_metadata(ctx: Context<SetMetadata>) -> Result<()> {
+    let metadata = &mut ctx.accounts.metadata.load_mut()?;
+    metadata.gacha_state = ctx.accounts.gacha_state.key();
+    metadata.keys_count = 0;
+    metadata.remaining_count = 0;
+    metadata.bump = ctx.bumps.metadata;
     Ok(())
 }

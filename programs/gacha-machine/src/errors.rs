@@ -40,6 +40,10 @@ pub enum GachaError {
     KeyPoolFull,
     #[msg("The provided key exceeds maximum allowed length.")]
     KeyTooLong,
+    #[msg("The provided key length is invalid.")]
+    InvalidKeyLength,
+    #[msg("The string conversion failed.")]
+    InvalidUtf8String,
     #[msg("The selected key index was out of bounds. This should not happen.")]
     IndexOutOfBounds,
     #[msg("The randomness value from the oracle was invalid.")]

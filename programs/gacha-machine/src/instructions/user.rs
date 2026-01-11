@@ -27,6 +27,10 @@ use crate::{constants::*, contexts::*, errors::GachaError, events::*, helpers::*
 pub fn pull(ctx: Context<Pull>) -> Result<()> {
     let clock = Clock::get()?;
 
+    // Access shared accounts like gacha_state or metadata
+    let metadata = &ctx.accounts.metadata.load()?;
+    let payment_config = &ctx.accounts.payment_config;
+
     // ============ GACHA MACHINE VALIDATIONS ============
     // Ensure the machine is in a valid state for pulling
     require!(!ctx.accounts.gacha_state.is_paused, GachaError::GachaPaused);
@@ -35,19 +39,19 @@ pub fn pull(ctx: Context<Pull>) -> Result<()> {
         GachaError::GachaNotFinalized
     );
     require!(
-        ctx.accounts.gacha_state.pull_count < ctx.accounts.gacha_state.encrypted_keys.len() as u16,
+        ctx.accounts.gacha_state.pull_count < metadata.keys_count,
         GachaError::NotEnoughKeys
     );
 
-    // ============ PAYMENT VALIDATION ============
-    // Verify the payment config is valid for this gacha machine
-    require!(
-        ctx.accounts
-            .gacha_state
-            .payment_configs
-            .contains(&ctx.accounts.payment_config.key()),
-        GachaError::InvalidPaymentConfig
-    );
+    // // ============ PAYMENT VALIDATION ============
+    // // Verify the payment config is valid for this gacha machine
+    // require!(
+    //     ctx.accounts
+    //         .gacha_state
+    //         .payment_configs
+    //         .contains(&ctx.accounts.payment_config.key()),
+    //     GachaError::InvalidPaymentConfig
+    // );
 
     // ============ RANDOMNESS VALIDATION ============
     // Ensure the randomness account is current and valid
@@ -62,10 +66,10 @@ pub fn pull(ctx: Context<Pull>) -> Result<()> {
 
     // ============ PAYMENT PROCESSING ============
     // Process payment based on payment method (SOL vs SPL token)
-    if ctx.accounts.payment_config.mint == system_program::ID {
-        process_sol_payment(&ctx, &ctx.accounts.payment_config)?;
+    if payment_config.mint == system_program::ID {
+        process_sol_payment(&ctx, &payment_config)?;
     } else {
-        process_spl_payment(&ctx, &ctx.accounts.payment_config)?;
+        process_spl_payment(&ctx, &payment_config)?;
     }
 
     // ============ PLAYER STATE SETUP ============
@@ -74,7 +78,7 @@ pub fn pull(ctx: Context<Pull>) -> Result<()> {
     player_state.user = ctx.accounts.user.key();
     player_state.gacha_state = ctx.accounts.gacha_state.key();
     player_state.randomness_account = randomness_account.key();
-    player_state.payment_mint = ctx.accounts.payment_config.mint.key();
+    player_state.payment_mint = payment_config.mint.key();
     player_state.is_settled = false;
     player_state.pull_slot = clock.slot;
     player_state.nonce = ctx.accounts.gacha_state.pull_count;
@@ -86,8 +90,8 @@ pub fn pull(ctx: Context<Pull>) -> Result<()> {
     emit!(GachaPulled {
         user: ctx.accounts.user.key(),
         nonce: player_state.nonce,
-        payment_mint: ctx.accounts.payment_config.mint,
-        price: ctx.accounts.payment_config.price,
+        payment_mint: payment_config.mint,
+        price: payment_config.price,
         gacha_state: ctx.accounts.gacha_state.key(),
     });
 
@@ -112,6 +116,7 @@ pub fn pull(ctx: Context<Pull>) -> Result<()> {
 /// Returns: Result indicating success or failure
 pub fn settle(ctx: Context<Settle>) -> Result<()> {
     let gacha_state = &mut ctx.accounts.gacha_state;
+    let metadata = &mut ctx.accounts.metadata.load_mut()?;
     let player_state = &mut ctx.accounts.player_state;
     let clock = Clock::get()?;
 
@@ -126,7 +131,7 @@ pub fn settle(ctx: Context<Settle>) -> Result<()> {
     );
 
     // Check if there are still rewards available
-    let remaining_count = gacha_state.remaining_indices.len();
+    let remaining_count = metadata.remaining_count as usize;
     require!(remaining_count > 0, GachaError::GachaIsEmpty);
 
     // ============ RANDOMNESS EXTRACTION ============
@@ -155,41 +160,31 @@ pub fn settle(ctx: Context<Settle>) -> Result<()> {
     // ============ REWARD SELECTION ============
     // Use Fisher-Yates shuffle approach: select random index from remaining
     let selected_index_in_remaining = random_u64 as usize % remaining_count;
-    let final_key_index = gacha_state
-        .remaining_indices
-        .swap_remove(selected_index_in_remaining);
+    // let final_key_index = metadata
+    //     .remaining_indices
+    //     .swap_remove(selected_index_in_remaining);
 
-    // Get the actual encrypted key from the pool (fixed-size array [u8; KEY_LEN])
-    let encrypted_key_from_pool = gacha_state
+    let final_key_index = metadata.remaining_indices[selected_index_in_remaining];
+    // Perform "Swap Remove" on the fixed array
+    // Move the last element into the gap we just created
+    let last_element = metadata.remaining_indices[remaining_count - 1];
+    metadata.remaining_indices[selected_index_in_remaining] = last_element;
+    metadata.remaining_count -= 1;
+
+    // Get the actual encrypted key from the pool (fixed-size array [u8; MAX_KEY_LEN])
+    let encrypted_key_from_pool = metadata
         .encrypted_keys
         .get(final_key_index as usize)
         .ok_or(GachaError::IndexOutOfBounds)?
         .clone();
 
     // Convert fixed-size byte array to UTF-8 string.
-    // Trim trailing zero bytes which were used as padding when the key was stored.
-    let trimmed_len = encrypted_key_from_pool
-        .iter()
-        .rposition(|&b| b != 0)
-        .map(|pos| pos + 1)
-        .unwrap_or(0);
-    let winning_string = String::from_utf8(encrypted_key_from_pool[..trimmed_len].to_vec())
-        .map_err(|_| GachaError::InvalidRandomnessValue)?;
+    let winning_string = bytes_to_string(&encrypted_key_from_pool)?;
 
     // ============ SETTLEMENT COMPLETION ============
     // Update player state with the result
     player_state.is_settled = true;
     player_state.result_index = final_key_index;
-
-    // Store the winning encrypted key into the player state.
-    // PlayerState stores the key as a fixed-size [u8; KEY_LEN]. Convert the UTF-8 string
-    // back into the fixed-size representation with zero padding.
-    let win_bytes = winning_string.as_bytes();
-    let mut win_fixed: [u8; KEY_LEN] = [0u8; KEY_LEN];
-    let copy_len = std::cmp::min(KEY_LEN, win_bytes.len());
-    if copy_len > 0 {
-        win_fixed[..copy_len].copy_from_slice(&win_bytes[..copy_len]);
-    }
     player_state.winning_encrypted_key = winning_string.clone();
 
     // Increment the settlement counter

@@ -3,6 +3,13 @@
 /// for off-chain tracking and monitoring.
 use anchor_lang::prelude::*;
 
+/// Emitted when a new gacha factory is initialized
+#[event]
+pub struct GachaFactoryInitialized {
+    pub admin: Pubkey,
+    pub gacha_factory: Pubkey,
+}
+
 /// Emitted when a new gacha machine is initialized
 #[event]
 pub struct GachaInitialized {

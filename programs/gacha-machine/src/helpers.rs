@@ -140,3 +140,28 @@ pub fn process_spl_payment(ctx: &Context<Pull>, payment_config: &PaymentConfig) 
 
     Ok(())
 }
+
+/// Helper to convert string to a fixed-size byte array
+pub fn string_to_fixed_bytes<const N: usize>(input: &str) -> [u8; N] {
+    let mut arr = [0u8; N]; // Create a fixed-size array initialized with zeros
+    let bytes = input.as_bytes();
+    let copy_len = std::cmp::min(N, bytes.len());
+    if copy_len > 0 {
+        arr[..copy_len].copy_from_slice(&bytes[..copy_len]); // Copy the bytes
+    }
+    arr
+}
+
+/// Helper to convert bytes to a UTF-8 string, trimming trailing zeros
+pub fn bytes_to_string(input: &[u8]) -> Result<String> {
+    // Find the position of the last non-zero byte
+    let trimmed_len = input
+        .iter()
+        .rposition(|&b| b != 0)
+        .map(|pos| pos + 1)
+        .unwrap_or(0);
+
+    // Convert the trimmed slice to a UTF-8 string
+    String::from_utf8(input[..trimmed_len].to_vec())
+        .map_err(|_| error!(GachaError::InvalidUtf8String))
+}

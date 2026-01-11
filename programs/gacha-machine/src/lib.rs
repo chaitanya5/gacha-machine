@@ -27,14 +27,30 @@ pub use events::*;
 pub use helpers::*;
 pub use states::*;
 
-declare_id!("nXtdsV4Xx1eZwLEAqWjw6EzBCqAVva7t3SoT7dMjkwH");
+declare_id!("98hQ4NYYQBcKB1YraPbvzT1k44s8Kcoe7kVxLrqLRxkZ");
 
 #[program]
 pub mod gacha_machine {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        instructions::initialize(ctx)
+    pub fn initialize_gacha_factory(ctx: Context<InitializeGachaFactory>) -> Result<()> {
+        instructions::initialize_gacha_factory(ctx)
+    }
+
+    pub fn create_gacha(ctx: Context<CreateGacha>) -> Result<()> {
+        instructions::create_gacha(ctx)
+    }
+
+    pub fn initialize_metadata(ctx: Context<InitializeMetadata>) -> Result<()> {
+        instructions::initialize_metadata(ctx)
+    }
+
+    pub fn resize_metadata(ctx: Context<ResizeMetadata>) -> Result<()> {
+        instructions::resize_metadata(ctx)
+    }
+
+    pub fn set_metadata(ctx: Context<SetMetadata>) -> Result<()> {
+        instructions::set_metadata(ctx)
     }
 
     pub fn add_payment_config(
