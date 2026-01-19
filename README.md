@@ -91,7 +91,7 @@ After updating the program address in `config/shared.json`, run the deployment s
 
 ```bash
 # For mainnet  
-npx ts-node scripts/deploy.ts <ADMIN_PRIVATE_KEY> mainnet
+npx ts-node scripts/deploy.ts <ADMIN_PRIVATE_KEY> <TREASURY_WALLET> mainnet
 ```
 
 **What the deploy script does:**

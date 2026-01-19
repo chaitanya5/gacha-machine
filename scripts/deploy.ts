@@ -19,7 +19,11 @@ import {
 } from "./utils";
 import { GachaClient } from "./gacha-client";
 
-async function addPaymentConfig(client: GachaClient, admin: Keypair) {
+async function addPaymentConfig(
+  client: GachaClient,
+  admin: Keypair,
+  treasuryWallet: PublicKey
+) {
   const { usdt, usdc, SOL } = getConfigurationFromNetwork(network);
 
   // Get current gacha state to check existing payment configs
@@ -63,18 +67,19 @@ async function addPaymentConfig(client: GachaClient, admin: Keypair) {
 
       // Check if this is SOL payment (System Program ID)
       if (paymentMint.equals(SystemProgram.programId)) {
-        // For SOL payments, use admin wallet directly
-        adminRecipientAccount = admin.publicKey;
+        // For SOL payments, use treasury wallet directly
+        adminRecipientAccount = treasuryWallet;
         console.log(
           `Admin SOL Account (Wallet): ${adminRecipientAccount.toBase58()}`
         );
       } else {
-        // For SPL tokens, create/get associated token account
+        // For SPL tokens, create/get associated token account for the treasury wallet
         const adminATAAccount = await getOrCreateAssociatedTokenAccount(
           client.provider.connection,
           admin,
           paymentMint,
-          admin.publicKey
+          treasuryWallet,
+          PublicKey.isOnCurve(treasuryWallet) ? false : true
         );
         adminRecipientAccount = adminATAAccount.address;
         console.log(`Admin Token Account: ${adminRecipientAccount.toBase58()}`);
@@ -173,7 +178,11 @@ async function populateKeys(
   }
 }
 
-async function main(adminPrivateKey: string, network: string) {
+async function main(
+  adminPrivateKey: string,
+  treasuryWallet: string,
+  network: string
+) {
   // --- SETUP ---
   console.log("🚀 Starting deployment script...", adminPrivateKey, network);
 
@@ -189,7 +198,7 @@ async function main(adminPrivateKey: string, network: string) {
   console.log(
     "\nStep 2: Adding USDT, USDC, SOL payment methods to the Gacha Machine..."
   );
-  await addPaymentConfig(client, admin);
+  await addPaymentConfig(client, admin, new PublicKey(treasuryWallet));
 
   // // --- POPULATE KEYS ---
   console.log("\nStep 3: Reading and encrypting URLs...");
@@ -212,9 +221,9 @@ async function main(adminPrivateKey: string, network: string) {
 
 // Pass admin private key and the network
 const args = process.argv.slice(2);
-const [adminPrivateKey, network] = args;
+const [adminPrivateKey, treasuryWallet, network] = args;
 
-main(adminPrivateKey, network).catch((err) => {
+main(adminPrivateKey, treasuryWallet, network).catch((err) => {
   console.error(err);
   process.exit(1);
 });
