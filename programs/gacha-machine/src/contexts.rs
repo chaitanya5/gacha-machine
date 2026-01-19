@@ -46,6 +46,16 @@ pub struct CreateGacha<'info> {
         bump
     )]
     pub gacha_state: Account<'info, GachaState>,
+    /// Metadata account PDA created with maximum CPI size
+    #[account(
+        init,
+        payer = admin,
+        // space = 10200,
+        space = 10 * (1024 as usize),
+        seeds = [METADATA, gacha_factory.key().as_ref(), gacha_state.key().as_ref()],
+        bump,
+    )]
+    pub metadata: AccountLoader<'info, GachaMachineMetadata>,
 
     /// The admin account that will own the gacha machine
     #[account(mut)]
@@ -339,41 +349,6 @@ pub struct Settle<'info> {
 
 /// Accounts required for resizing the metadata account
 #[derive(Accounts)]
-pub struct InitializeMetadata<'info> {
-    /// The gacha factory state account (PDA)
-    #[account(
-        has_one = admin,
-        seeds = [GACHA_FACTORY],
-        bump
-    )]
-    pub gacha_factory: Account<'info, GachaFactory>,
-
-    /// The gacha machine state to modify
-    #[account(
-        has_one = gacha_factory
-    )]
-    pub gacha_state: Account<'info, GachaState>,
-
-    #[account(
-        init,
-        payer = admin,
-        // space = 10200,
-        space = 10 * (1024 as usize),
-        seeds = [METADATA, gacha_factory.key().as_ref(), gacha_state.key().as_ref()],
-        bump,
-    )]
-    pub metadata: AccountLoader<'info, GachaMachineMetadata>,
-
-    /// Admin account (must match gacha_state.admin)
-    #[account(mut)]
-    pub admin: Signer<'info>,
-
-    /// System program for reallocation
-    pub system_program: Program<'info, System>,
-}
-
-/// Accounts required for resizing the metadata account
-#[derive(Accounts)]
 pub struct ResizeMetadata<'info> {
     /// The gacha factory state account (PDA)
     #[account(
@@ -408,9 +383,9 @@ pub struct ResizeMetadata<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Accounts required for initializing the metadata account
+/// Accounts required for setting the metadata account
 #[derive(Accounts)]
-pub struct SetMetadata<'info> {
+pub struct InitializeMetadata<'info> {
     /// The gacha factory state account (PDA)
     #[account(
         has_one = admin,
@@ -427,6 +402,46 @@ pub struct SetMetadata<'info> {
 
     #[account(
         mut,
+        seeds = [METADATA, gacha_factory.key().as_ref(), gacha_state.key().as_ref()],
+        bump,
+        // realloc = 10200,
+        // realloc::payer = admin,
+        // realloc::zero = true,
+    )]
+    pub metadata: AccountLoader<'info, GachaMachineMetadata>,
+
+    /// Admin account (must match gacha_state.admin)
+    #[account(mut)]
+    pub admin: Signer<'info>,
+
+    /// System program for reallocation
+    pub system_program: Program<'info, System>,
+}
+
+/// Accounts required for closing all the accounts
+#[derive(Accounts)]
+pub struct CloseAllAccounts<'info> {
+    /// The gacha factory state account (PDA)
+    #[account(
+        mut,
+        close = admin,
+        has_one = admin,
+        seeds = [GACHA_FACTORY],
+        bump,
+    )]
+    pub gacha_factory: Account<'info, GachaFactory>,
+
+    /// The gacha machine state to modify
+    #[account(
+        mut,
+        close = admin,
+        has_one = gacha_factory
+    )]
+    pub gacha_state: Account<'info, GachaState>,
+
+    #[account(
+        mut,
+        close = admin,
         seeds = [METADATA, gacha_factory.key().as_ref(), gacha_state.key().as_ref()],
         bump,
         // realloc = 10200,

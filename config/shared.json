@@ -23,12 +23,12 @@
     }
   },
   "mainnet": {
-    "programId": "nXtdsV4Xx1eZwLEAqWjw6EzBCqAVva7t3SoT7dMjkwH",
+    "programId": "566t9cTYdSqHX4aCdgaHEAR2mzT3earW8Z2Lodk3uZ1v",
     "encryptionKey": "my-super-secret-key-for-devnet",
-    "rpcUrl": "https://api.mainnet-beta.solana.com",
+    "rpcUrl": "https://mainnet.helius-rpc.com/?api-key=c8e715f9-85fc-4cae-bdd8-2655db3e74cb",
     "SOL": {
       "mint": "11111111111111111111111111111111",
-      "cost": "0.0065",
+      "cost": "0.001",
       "decimals": "9",
       "ticker": "SOL"
     },

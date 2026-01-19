@@ -12,7 +12,8 @@ import { PaymentType } from "./utils";
 export class GachaClient {
   program: Program<GachaMachine>;
   provider: anchor.AnchorProvider;
-  gachaStatePDA: PublicKey;
+  gachaFactoryPDA: PublicKey;
+  maxKeys: number = 90;
 
   constructor(program: Program<GachaMachine>, provider: anchor.AnchorProvider) {
     this.program = program;
@@ -20,31 +21,74 @@ export class GachaClient {
 
     // Derive the main GachaState PDA
     const [pda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("gacha_state")],
+      [Buffer.from("gacha_factory")],
       this.program.programId
     );
-    this.gachaStatePDA = pda;
+    this.gachaFactoryPDA = pda;
   }
 
   // ========================================
   // Utilities
   // ========================================
 
-  findPaymentConfigPDA(paymentMint: string) {
+  findGachaStatePDA(gachaCount: anchor.BN) {
+    const [gachaStatePDA] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("gacha_state"),
+        this.gachaFactoryPDA.toBuffer(),
+        gachaCount.toBuffer("le", 4),
+      ],
+      this.program.programId
+    );
+    return gachaStatePDA;
+  }
+
+  findMetadataPDAWithGachaCount(gachaCount: anchor.BN) {
+    const gachaStatePDA = this.findGachaStatePDA(gachaCount);
+    const [metadataPDA] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        this.gachaFactoryPDA.toBuffer(),
+        gachaStatePDA.toBuffer(),
+      ],
+      this.program.programId
+    );
+    return metadataPDA;
+  }
+
+  findMetadataPDA(gachaState: PublicKey) {
+    const [metadataPDA] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata"),
+        this.gachaFactoryPDA.toBuffer(),
+        gachaState.toBuffer(),
+      ],
+      this.program.programId
+    );
+    return metadataPDA;
+  }
+
+  findPaymentConfigPDA(gachaState: PublicKey, paymentMint: PublicKey) {
     const [paymentConfigPDA] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("payment_config"),
-        this.gachaStatePDA.toBuffer(),
-        new PublicKey(paymentMint).toBuffer(),
+        this.gachaFactoryPDA.toBuffer(),
+        gachaState.toBuffer(),
+        paymentMint.toBuffer(),
       ],
       this.program.programId
     );
     return paymentConfigPDA;
   }
 
-  findPlayerStatePDA(user: PublicKey, nonce: anchor.BN) {
+  findPlayerStatePDA(gachaState: PublicKey, user: PublicKey, nonce: anchor.BN) {
     const [playerStatePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("player_state"), user.toBuffer(), nonce.toBuffer("le", 8)],
+      [
+        Buffer.from("player_state"),
+        Buffer.from("gacha_state"),
+        user.toBuffer(),
+        nonce.toBuffer("le", 8),
+      ],
       this.program.programId
     );
     return playerStatePDA;
@@ -53,33 +97,88 @@ export class GachaClient {
   // Fetch Methods
   // ========================================
 
-  async getGachaState() {
-    const gachaState = await this.program.account.gachaState.fetch(
-      this.gachaStatePDA
+  async getGachaFactoryState() {
+    const gachaFactory = await this.program.account.gachaFactory.fetch(
+      this.gachaFactoryPDA
     );
     return {
-      admin: gachaState.admin.toBase58(),
-      bump: gachaState.bump,
-      isFinalized: gachaState.isFinalized,
-      isPaused: gachaState.isPaused,
-      pullCount: gachaState.pullCount.toNumber(),
-      settleCount: gachaState.settleCount.toNumber(),
-      encryptedKeys: gachaState.encryptedKeys,
-      remainingIndices: gachaState.remainingIndices,
-      paymentConfigs: gachaState.paymentConfigs.map((config) =>
-        config.toBase58()
-      ),
+      admin: gachaFactory.admin.toBase58(),
+      gachaCount: gachaFactory.gachaCount,
+      bump: gachaFactory.bump,
     };
   }
 
-  async getPaymentConfig(paymentMint: string) {
-    const paymentConfigPDA = this.findPaymentConfigPDA(paymentMint);
+  async getGachaState(gachaCount: anchor.BN) {
+    const gachaStatePDA = this.findGachaStatePDA(gachaCount);
+
+    const gachaState = await this.program.account.gachaState.fetch(
+      gachaStatePDA
+    );
+    return {
+      gachaFactory: gachaState.gachaFactory.toBase58(),
+      admin: gachaState.admin.toBase58(),
+      pullCount: gachaState.pullCount,
+      settleCount: gachaState.settleCount,
+      bump: gachaState.bump,
+      isFinalized: gachaState.isFinalized,
+      isPaused: gachaState.isPaused,
+      isHalted: gachaState.isHalted,
+    };
+  }
+
+  async getLastGachaState() {
+    const { gachaCount } = await this.getGachaFactoryState();
+    const gachaStatePDA = this.findGachaStatePDA(new anchor.BN(gachaCount));
+
+    const gachaState = await this.program.account.gachaState.fetch(
+      gachaStatePDA
+    );
+    return [
+      gachaStatePDA,
+      {
+        gachaFactory: gachaState.gachaFactory.toBase58(),
+        admin: gachaState.admin.toBase58(),
+        pullCount: gachaState.pullCount,
+        settleCount: gachaState.settleCount,
+        bump: gachaState.bump,
+        isFinalized: gachaState.isFinalized,
+        isPaused: gachaState.isPaused,
+        isHalted: gachaState.isHalted,
+      },
+    ];
+  }
+
+  async getMetadataState(gachaCount: anchor.BN) {
+    const gachaStatePDA = this.findGachaStatePDA(gachaCount);
+    const metadataPDA = this.findMetadataPDA(gachaStatePDA);
+
+    const metadataState = await this.program.account.gachaMachineMetadata.fetch(
+      metadataPDA
+    );
+    return {
+      gachaState: metadataState.gachaState.toBase58(),
+      encryptedKeys: metadataState.encryptedKeys,
+      remainingIndices: metadataState.remainingIndices,
+      decryptionKey: metadataState.decryptionKey,
+      keysCount: metadataState.keysCount,
+      remainingCount: metadataState.remainingCount,
+      bump: metadataState.bump,
+      padding: metadataState.padding,
+
+      // paymentConfigs: metadataState.paymentConfigs.map((config) =>
+      //   config.toBase58()
+      // ),
+    };
+  }
+
+  async getPaymentConfig(gachaState: PublicKey, paymentMint: PublicKey) {
+    const paymentConfigPDA = this.findPaymentConfigPDA(gachaState, paymentMint);
     const paymentConfig = await this.program.account.paymentConfig.fetch(
       paymentConfigPDA
     );
 
     return {
-      gacha_state: paymentConfig.gachaState.toBase58(),
+      gachaState: paymentConfig.gachaState.toBase58(),
       mint: paymentConfig.mint.toBase58(),
       price: paymentConfig.price.toNumber(),
       adminRecipientAccount: paymentConfig.adminRecipientAccount.toBase58(),
@@ -87,11 +186,13 @@ export class GachaClient {
     };
   }
 
-  async getPlayerState(user: PublicKey, nonce: anchor.BN) {
-    const [playerStatePDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("player_state"), user.toBuffer(), nonce.toBuffer("le", 8)],
-      this.program.programId
-    );
+  async getPlayerState(
+    gachaState: PublicKey,
+    user: PublicKey,
+    nonce: anchor.BN
+  ) {
+    const playerStatePDA = this.findPlayerStatePDA(gachaState, user, nonce);
+
     const playerState = await this.program.account.playerState.fetch(
       playerStatePDA
     );
@@ -105,7 +206,7 @@ export class GachaClient {
       winningEncryptedKey: playerState.winningEncryptedKey,
       bump: playerState.bump,
       pullSlot: playerState.pullSlot.toNumber(),
-      nonce: playerState.nonce.toNumber(),
+      nonce: playerState.nonce,
     };
   }
 
@@ -113,11 +214,27 @@ export class GachaClient {
   // Admin Instructions
   // ========================================
 
-  async initialize(admin: Keypair) {
+  async initializeFactory(admin: Keypair) {
     return this.program.methods
-      .initialize()
-      .accountsPartial({
-        gachaState: this.gachaStatePDA,
+      .initializeGachaFactory()
+      .accounts({
+        admin: admin.publicKey,
+      })
+      .signers([admin])
+      .rpc();
+  }
+
+  async createGacha(admin: Keypair) {
+    const { gachaCount } = await this.getGachaFactoryState();
+    const gachaStatePDA = this.findGachaStatePDA(new anchor.BN(gachaCount));
+    const metadataPDA = this.findMetadataPDA(gachaStatePDA);
+
+    return this.program.methods
+      .createGacha()
+      .accounts({
+        gachaFactory: this.gachaFactoryPDA,
+        gachaState: gachaStatePDA,
+        metadata: metadataPDA,
         admin: admin.publicKey,
         systemProgram: SystemProgram.programId,
       })
@@ -125,39 +242,91 @@ export class GachaClient {
       .rpc();
   }
 
+  async initializeMetadata(admin: Keypair, gachaCount: anchor.BN) {
+    // const { gachaCount } = await this.getGachaFactoryState();
+    const gachaStatePDA = this.findGachaStatePDA(gachaCount);
+
+    return this.program.methods
+      .initializeMetadata()
+      .accounts({
+        gachaState: gachaStatePDA,
+      })
+      .signers([admin])
+      .rpc();
+  }
+
+  async resizeMetadata(admin: Keypair, gachaCount: anchor.BN) {
+    // const { gachaCount } = await this.getGachaFactoryState();
+    const gachaStatePDA = this.findGachaStatePDA(gachaCount);
+
+    return this.program.methods
+      .resizeMetadata()
+      .accounts({
+        gachaState: gachaStatePDA,
+      })
+      .signers([admin])
+      .rpc();
+  }
+
+  async closeAllAccounts(admin: Keypair, gachaCount: anchor.BN) {
+    // const { gachaCount } = await this.getGachaFactoryState();
+    const gachaStatePDA = this.findGachaStatePDA(gachaCount);
+
+    return this.program.methods
+      .closeAll()
+      .accounts({
+        gachaState: gachaStatePDA,
+        // metadata: this.findMetadataPDA(gachaStatePDA),
+        // admin: admin.publicKey,
+        // systemProgram: SystemProgram.programId,
+      })
+      .signers([admin])
+      .rpc();
+  }
+
   async addPayment(
     admin: Keypair,
-    paymentConfig: PublicKey,
+    gachaCount: anchor.BN,
     paymentMint: PublicKey,
     paymentPrice: anchor.BN,
     paymentRecipientAccount: PublicKey
   ) {
+    const gachaStatePDA = this.findGachaStatePDA(new anchor.BN(gachaCount));
+
     return this.program.methods
       .addPaymentConfig(paymentMint, paymentPrice, paymentRecipientAccount)
       .accounts({
         // paymentConfig,
         // admin,
-        gachaState: this.gachaStatePDA,
+        gachaState: gachaStatePDA,
       })
       .signers([admin])
       .rpc();
   }
 
-  async addKey(admin: Keypair, encryptedKey: string) {
+  async addKey(admin: Keypair, gachaCount: anchor.BN, encryptedKey: string) {
+    const gachaStatePDA = this.findGachaStatePDA(new anchor.BN(gachaCount));
+    const metadataPDA = this.findMetadataPDA(gachaStatePDA);
+
     return this.program.methods
       .addKey(encryptedKey)
       .accounts({
-        gachaState: this.gachaStatePDA,
+        gachaState: gachaStatePDA,
+        // metadata: metadataPDA,
       })
       .signers([admin])
       .rpc();
   }
 
-  async finalize(admin: Keypair) {
+  async finalize(admin: Keypair, gachaCount: anchor.BN) {
+    const gachaStatePDA = this.findGachaStatePDA(new anchor.BN(gachaCount));
+    const metadataPDA = this.findMetadataPDA(gachaStatePDA);
+
     return this.program.methods
       .finalize()
       .accounts({
-        gachaState: this.gachaStatePDA,
+        gachaState: gachaStatePDA,
+        // metadata: metadataPDA,
       })
       .signers([admin])
       .rpc();
@@ -200,7 +369,7 @@ export class GachaClient {
     //   .pull()
     //   .accounts({
     //     // playerState: playerStatePDA,
-    //     // gachaState: this.gachaStatePDA,
+    //     // gachaState: gachaStatePDA,
     //     // usdtMint: usdtMint,
     //     // userTokenAccount: userTokenAccount,
     //     // adminTokenAccount: adminTokenAccount,

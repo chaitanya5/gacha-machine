@@ -27,7 +27,7 @@ pub use events::*;
 pub use helpers::*;
 pub use states::*;
 
-declare_id!("98hQ4NYYQBcKB1YraPbvzT1k44s8Kcoe7kVxLrqLRxkZ");
+declare_id!("566t9cTYdSqHX4aCdgaHEAR2mzT3earW8Z2Lodk3uZ1v");
 
 #[program]
 pub mod gacha_machine {
@@ -47,10 +47,6 @@ pub mod gacha_machine {
 
     pub fn resize_metadata(ctx: Context<ResizeMetadata>) -> Result<()> {
         instructions::resize_metadata(ctx)
-    }
-
-    pub fn set_metadata(ctx: Context<SetMetadata>) -> Result<()> {
-        instructions::set_metadata(ctx)
     }
 
     pub fn add_payment_config(
@@ -104,5 +100,9 @@ pub mod gacha_machine {
 
     pub fn settle(ctx: Context<Settle>) -> Result<()> {
         instructions::settle(ctx)
+    }
+
+    pub fn close_all(_ctx: Context<CloseAllAccounts>) -> Result<()> {
+        Ok(())
     }
 }

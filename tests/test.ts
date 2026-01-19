@@ -27,6 +27,7 @@ describe("gacha-machine", () => {
   let gachaStateAccount;
   let metadataAccount;
 
+  let adminLamports;
   let MAX_KEYS = 90;
 
   before(async () => {
@@ -41,6 +42,10 @@ describe("gacha-machine", () => {
         10 * LAMPORTS_PER_SOL
       )
     );
+
+    adminLamports = await provider.connection.getBalance(admin.publicKey);
+    console.log("adminLamports airdropped", adminLamports);
+
     await provider.connection.confirmTransaction(
       await provider.connection.requestAirdrop(
         user.publicKey,
@@ -227,9 +232,45 @@ describe("gacha-machine", () => {
       );
       console.log("metadata account", metadataAccount.remainingIndices[58]);
     });
+
+    it("should close all state accounts in the program", async () => {
+      adminLamports = await provider.connection.getBalance(admin.publicKey);
+      console.log("adminLamports before", adminLamports);
+
+      await program.methods
+        .closeAll()
+        .accounts({
+          gachaFactory,
+          gachaState,
+          metadata,
+          admin: admin.publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([admin])
+        .rpc();
+
+      adminLamports = await provider.connection.getBalance(admin.publicKey);
+      console.log("adminLamports after", adminLamports);
+
+      // const metadataAccount = await program.account.gachaMachineMetadata.fetch(
+      //   metadata
+      // );
+      // console.log(
+      //   "metadata account",
+      //   bytesToString(metadataAccount.encryptedKeys[58])
+      // );
+    });
   });
 });
 
 const bytesToString = (bytes: number[]): string => {
   return Buffer.from(bytes).toString("utf8");
+};
+
+const stringToUint8Array = (text: string): Uint8Array => {
+  return new TextEncoder().encode(text);
+};
+
+const stringToNumberArray = (text: string): number[] => {
+  return Array.from(new TextEncoder().encode(text));
 };

@@ -33,15 +33,20 @@ pub fn initialize_gacha_factory(ctx: Context<InitializeGachaFactory>) -> Result<
 /// Returns: Result indicating success or failure
 pub fn create_gacha(ctx: Context<CreateGacha>) -> Result<()> {
     let gacha_state = &mut ctx.accounts.gacha_state;
-    // Set the admin as the signer of this transaction
+    let gacha_factory = &mut ctx.accounts.gacha_factory;
+
+    // Initialize Gacha Machine State
     gacha_state.admin = ctx.accounts.admin.key();
-    gacha_state.gacha_factory = ctx.accounts.gacha_factory.key();
+    gacha_state.gacha_factory = gacha_factory.key();
     gacha_state.bump = ctx.bumps.gacha_state;
     gacha_state.is_finalized = false;
     gacha_state.is_paused = false;
     gacha_state.is_halted = false;
     gacha_state.pull_count = 0;
     gacha_state.settle_count = 0;
+
+    // Update count in Gacha Factory
+    gacha_factory.gacha_count += 1;
 
     emit!(GachaInitialized {
         admin: ctx.accounts.admin.key(),
@@ -311,25 +316,18 @@ pub fn release_decryption_key(ctx: Context<AdminAction>, decryption_key: String)
     Ok(())
 }
 
-/// Initialize the metadata account
+/// Resize the metadata account to its full size before initializing it
 ///
-/// This instruction is called after `create_gacha` which will just create a PDA without assigning any data
-pub fn initialize_metadata(_ctx: Context<InitializeMetadata>) -> Result<()> {
-    Ok(())
-}
-
-/// Resize the metadata account to its full size
-///
-/// This instruction is called after `initialize_metadata` to expand the metadata
+/// This instruction is called before `initialize_metadata` to expand the metadata
 /// account from its small initial size to its full size.
 pub fn resize_metadata(_ctx: Context<ResizeMetadata>) -> Result<()> {
     Ok(())
 }
 
-/// Set the metadata account with default values after it it reaches to its full size
+/// Initialize the metadata account
 ///
-/// This instruction is called after `resize_metadata`
-pub fn set_metadata(ctx: Context<SetMetadata>) -> Result<()> {
+/// This instruction is called after optional `resize_metadata` which will initiate the account
+pub fn initialize_metadata(ctx: Context<InitializeMetadata>) -> Result<()> {
     let metadata = &mut ctx.accounts.metadata.load_mut()?;
     metadata.gacha_state = ctx.accounts.gacha_state.key();
     metadata.keys_count = 0;
@@ -337,3 +335,4 @@ pub fn set_metadata(ctx: Context<SetMetadata>) -> Result<()> {
     metadata.bump = ctx.bumps.metadata;
     Ok(())
 }
+
