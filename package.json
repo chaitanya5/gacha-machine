@@ -19,10 +19,10 @@
     "test:coverage": "anchor test --coverage"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "0.32.1",
+    "@coral-xyz/anchor": "0.31.1",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
-    "@switchboard-xyz/on-demand": "^2.16.4",
+    "@switchboard-xyz/on-demand": "^3.8.2",
     "axios": "^1.12.2",
     "bs58": "^6.0.0",
     "crypto-js": "^4.2.0",

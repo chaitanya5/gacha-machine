@@ -23,7 +23,7 @@
     }
   },
   "mainnet": {
-    "programId": "566t9cTYdSqHX4aCdgaHEAR2mzT3earW8Z2Lodk3uZ1v",
+    "programId": "Bev1vGX4L4n9osJkdhG1Nig4K1mS3ELhDUwrpwVFybh4",
     "encryptionKey": "my-super-secret-key-for-devnet",
     "rpcUrl": "https://mainnet.helius-rpc.com/?api-key=c8e715f9-85fc-4cae-bdd8-2655db3e74cb",
     "SOL": {

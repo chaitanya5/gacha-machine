@@ -178,7 +178,7 @@ async function getPaymentDetails(
   if (currency.toLowerCase() === "sol") {
     paymentType = PaymentType.SOL;
     paymentMint = SystemProgram.programId; // System program ID for SOL
-    paymentAmount = parseFloat(config.SOL?.cost || "0.1"); // Default 0.1 SOL
+    paymentAmount = parseFloat(config.SOL?.cost || "0.001"); // Default 0.1 SOL
 
     // Validate SOL balance
     const solValidation = await validateSolBalance(
@@ -236,6 +236,7 @@ async function getPaymentDetails(
  * Main pull gacha function that supports both SOL and SPL payments
  */
 export async function pullGacha(
+  gachaMachineCount: anchor.BN,
   userPrivateKey: string,
   currency: string,
   network: string
@@ -267,28 +268,36 @@ export async function pullGacha(
   }
 
   // Get gacha state
-  const [gachaState, gachaError] = await safeAsync(client.getGachaState());
+  const gachaStatePDA = client.findGachaStatePDA(gachaMachineCount);
+  const [gachaState, gachaError] = await safeAsync(
+    client.getGachaState(gachaMachineCount)
+  );
+
   if (gachaError) {
     console.error(`❌ Failed to get gacha state:`, gachaError);
     throw gachaError;
   }
 
   // Get paymentConfig for this mint
-  const paymentConfigPDA = client.findPaymentConfigPDA(paymentMint.toBase58());
-
-  // Verify if this paymentConfig is present inside the gachaState
-  const paymentConfigExists = gachaState.paymentConfigs.some(
-    (config: any) => config.toString() === paymentConfigPDA.toString()
+  const paymentConfigPDA = client.findPaymentConfigPDA(
+    gachaStatePDA,
+    paymentMint
   );
 
-  if (!paymentConfigExists) {
-    throw new Error(
-      `Payment method ${currency} not configured for this gacha machine`
-    );
-  }
+  // // Verify if this paymentConfig is present inside the gachaState
+  // const paymentConfigExists = gachaState.paymentConfigs.some(
+  //   (config: any) => config.toString() === paymentConfigPDA.toString()
+  // );
+
+  // if (!paymentConfigExists) {
+  //   throw new Error(
+  //     `Payment method ${currency} not configured for this gacha machine`
+  //   );
+  // }
 
   const { adminRecipientAccount } = await client.getPaymentConfig(
-    paymentMint.toBase58()
+    gachaStatePDA,
+    paymentMint
   );
 
   // Create Switchboard randomness account
@@ -302,26 +311,59 @@ export async function pullGacha(
 
   const { randomness } = randomnessResult;
 
-  // Execute pull with Switchboard commit instruction
+  // Setup Switchboard environment
+  const { sbProgram, queue } = await setupSwitchboardEnvironment(
+    connection,
+    user
+  );
+
+  // Create commit instruction with retry logic
+  console.log("🎲 Creating Switchboard commit instruction...");
+  const commitIx = await createCommitInstruction(randomness, queue);
+  console.log("✅ Commit instruction created successfully");
+
+  const pullIx = await client.pullInstruction2(
+    gachaMachineCount,
+    user,
+    userPaymentAccount,
+    paymentMint,
+    paymentType,
+    randomness.pubkey
+  );
+
+  // Execute both commit and pull instructions in the same transaction
   const [pullTx, pullError] = await safeAsync(
-    executePullWithSwitchboard(
-      connection,
-      user,
-      client,
-      paymentType,
-      paymentMint,
-      paymentConfigPDA,
-      userPaymentAccount,
-      new PublicKey(adminRecipientAccount),
-      randomness,
-      gachaState
-    )
+    handleTransaction(connection, [commitIx, pullIx], user, [user])
   );
 
   if (pullError) {
     console.error(`❌ Pull failed:`, pullError);
     throw pullError;
   }
+
+  console.log(`✅ Pull successful! Transaction: ${pullTx}`);
+  pullTx;
+
+  // Execute pull with Switchboard commit instruction
+  // const [pullTx, pullError] = await safeAsync(
+  //   executePullWithSwitchboard(
+  //     connection,
+  //     user,
+  //     client,
+  //     paymentType,
+  //     paymentMint,
+  //     paymentConfigPDA,
+  //     userPaymentAccount,
+  //     new PublicKey(adminRecipientAccount),
+  //     randomness,
+  //     gachaState
+  //   )
+  // );
+
+  // if (pullError) {
+  //   console.error(`❌ Pull failed:`, pullError);
+  //   throw pullError;
+  // }
 
   // Get current pull count for settle command
   const pullCount = new anchor.BN(gachaState.pullCount);
@@ -336,7 +378,7 @@ export async function pullGacha(
     `💡 Save this randomness account address for settling with Switchboard!`
   );
   console.log(
-    `📝 Settle command: npx ts-node user-interactions_sol_and_spl.ts settle "${userPrivateKey}" ${pullCount.toString()} ${randomness.pubkey.toBase58()}`
+    `📝 Settle command: \n npx ts-node scripts/user-interactions_sol_and_spl.ts settle ${gachaMachineCount.toString()} ${userPrivateKey} ${pullCount.toString()} ${randomness.pubkey.toBase58()} ${network}`
   );
 
   return { pullTx, randomnessAccount: randomness.pubkey.toBase58() };
@@ -346,6 +388,7 @@ export async function pullGacha(
  * Settle gacha function
  */
 async function settleGacha(
+  gachaMachineCount: anchor.BN,
   userPrivateKey: string,
   nonce: string,
   randomnessAccountAddress: string,
@@ -387,12 +430,19 @@ async function settleGacha(
 
   // Create settle instruction
   const [settleIx, settleIxError] = await safeAsync(
-    createSettleInstruction(
-      program,
-      user.publicKey,
+    client.settleInstruction(
+      gachaMachineCount,
+      user,
       new anchor.BN(nonce),
       randomnessAccount
     )
+    // createSettleInstruction(
+    //   client,
+    //   program,
+    //   user.publicKey,
+    //   new anchor.BN(nonce),
+    //   randomnessAccount
+    // )
   );
 
   if (settleIxError) {
@@ -417,6 +467,7 @@ async function settleGacha(
  * Creates the settle instruction for the gacha machine.
  */
 async function createSettleInstruction(
+  client: GachaClient,
   gachaProgram: any,
   userPublicKey: PublicKey,
   nonce: anchor.BN,
@@ -454,7 +505,7 @@ async function main() {
   if (args.length === 0) {
     console.log("Usage:");
     console.log(
-      "  Pull: npx ts-node user-interactions_sol_and_spl.ts pull <network> <currency> <private_key>"
+      "  Pull: npx ts-node user-interactions_sol_and_spl.ts pull <gacha_machine_count> <private_key> <currency> <network>"
     );
     console.log(
       "  Settle: npx ts-node user-interactions_sol_and_spl.ts settle <private_key> <nonce> <randomness_account> [network]"
@@ -462,13 +513,13 @@ async function main() {
     console.log("");
     console.log("Examples:");
     console.log(
-      "  npx ts-node user-interactions_sol_and_spl.ts pull devnet SOL 2k3u2Ksn8ztvx..."
+      "  npx ts-node user-interactions_sol_and_spl.ts pull 0 2k3u2Ksn8ztvx... SOL devnet"
     );
     console.log(
-      "  npx ts-node user-interactions_sol_and_spl.ts pull devnet USDC 2k3u2Ksn8ztvx..."
+      "  npx ts-node user-interactions_sol_and_spl.ts pull 0 2k3u2Ksn8ztvx... USDT devnet"
     );
     console.log(
-      "  npx ts-node user-interactions_sol_and_spl.ts pull devnet USDT 2k3u2Ksn8ztvx..."
+      "  npx ts-node user-interactions_sol_and_spl.ts pull 0 2k3u2Ksn8ztvx... USDC devnet"
     );
     console.log(
       "  npx ts-node user-interactions_sol_and_spl.ts settle 2k3u2Ksn8ztvx... 0 8xY... devnet"
@@ -487,8 +538,13 @@ async function main() {
         return;
       }
 
-      const [, privateKey, currency, network] = args;
-      await pullGacha(privateKey, currency, network);
+      const [, gachaMachineCount, privateKey, currency, network] = args;
+      await pullGacha(
+        new anchor.BN(gachaMachineCount),
+        privateKey,
+        currency,
+        network
+      );
     } else if (command === "settle") {
       if (args.length < 4) {
         console.error(
@@ -497,8 +553,14 @@ async function main() {
         return;
       }
 
-      const [, privateKey, nonce, randomnessAccount, network] = args;
-      await settleGacha(privateKey, nonce, randomnessAccount, network);
+      const [, gcmCount, privateKey, nonce, randomnessAccount, network] = args;
+      await settleGacha(
+        new anchor.BN(gcmCount),
+        privateKey,
+        nonce,
+        randomnessAccount,
+        network
+      );
     } else {
       console.error(`❌ Unknown command: ${command}`);
       console.log("Available commands: pull, settle");

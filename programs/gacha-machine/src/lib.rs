@@ -27,7 +27,7 @@ pub use events::*;
 pub use helpers::*;
 pub use states::*;
 
-declare_id!("566t9cTYdSqHX4aCdgaHEAR2mzT3earW8Z2Lodk3uZ1v");
+declare_id!("Bev1vGX4L4n9osJkdhG1Nig4K1mS3ELhDUwrpwVFybh4");
 
 #[program]
 pub mod gacha_machine {
@@ -45,8 +45,8 @@ pub mod gacha_machine {
         instructions::initialize_metadata(ctx)
     }
 
-    pub fn resize_metadata(ctx: Context<ResizeMetadata>) -> Result<()> {
-        instructions::resize_metadata(ctx)
+    pub fn resize_metadata(ctx: Context<ResizeMetadata>, new_size: u32) -> Result<()> {
+        instructions::resize_metadata(ctx, new_size)
     }
 
     pub fn add_payment_config(
@@ -70,8 +70,8 @@ pub mod gacha_machine {
         instructions::remove_payment_config(ctx, payment_mint)
     }
 
-    pub fn add_key(ctx: Context<AddKey>, encrypted_key: String) -> Result<()> {
-        instructions::add_key(ctx, encrypted_key)
+    pub fn add_keys(ctx: Context<AddKey>, encrypted_keys: Vec<String>) -> Result<()> {
+        instructions::add_keys(ctx, encrypted_keys)
     }
 
     pub fn finalize(ctx: Context<Finalize>) -> Result<()> {

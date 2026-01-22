@@ -28,7 +28,7 @@ describe("gacha-machine", () => {
   let metadataAccount;
 
   let adminLamports;
-  let MAX_KEYS = 90;
+  let MAX_KEYS = 1000;
 
   before(async () => {
     // Initialize test accounts
@@ -64,7 +64,7 @@ describe("gacha-machine", () => {
     it("should initialize gacha factory successfully", async () => {
       await program.methods
         .initializeGachaFactory()
-        .accounts({
+        .accountsPartial({
           gachaFactory,
           admin: admin.publicKey,
           systemProgram: SystemProgram.programId,
@@ -113,18 +113,6 @@ describe("gacha-machine", () => {
         .accounts({
           gachaFactory,
           gachaState,
-          admin: admin.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .signers([admin])
-        .rpc();
-
-      // 1. Initialize the metadata account
-      await program.methods
-        .initializeMetadata()
-        .accounts({
-          gachaFactory,
-          gachaState,
           metadata,
           admin: admin.publicKey,
           systemProgram: SystemProgram.programId,
@@ -133,28 +121,41 @@ describe("gacha-machine", () => {
         .rpc();
 
       // Verify the initial small size
-      const initialAccountInfo = await provider.connection.getAccountInfo(
+      let metadataAccountInfo = await provider.connection.getAccountInfo(
         metadata
       );
-      expect(initialAccountInfo.data.length).to.equal(10240);
+      console.log("initialAccountInfo", metadataAccountInfo.data.length);
+      expect(metadataAccountInfo.data.length).to.equal(10240);
 
       // 2. Resize the metadata account to its full size
-      await program.methods
-        .resizeMetadata()
-        .accounts({
-          gachaFactory,
-          gachaState,
-          metadata,
-          admin: admin.publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .signers([admin])
-        .rpc();
+      // Starting from 1 (runs 9 times) because account already has 10 * 1024 when created
+      for (let i = 1; i < 10; i++) {
+        await program.methods
+          .resizeMetadata(10 * 1024 * (i + 1))
+          .accountsPartial({
+            gachaFactory,
+            gachaState,
+            metadata,
+            admin: admin.publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .signers([admin])
+          .rpc();
+        // Verify the initial small size
+        metadataAccountInfo = await provider.connection.getAccountInfo(
+          metadata
+        );
+        console.log("metadataAccountInfo", i, metadataAccountInfo.data.length);
+      }
 
-      // 3. Set the metadata account's data
+      // Verify the initial small size
+      metadataAccountInfo = await provider.connection.getAccountInfo(metadata);
+      console.log("metadataAccountInfo", metadataAccountInfo.data.length);
+
+      // 1. Initialize the metadata account
       await program.methods
-        .setMetadata()
-        .accounts({
+        .initializeMetadata()
+        .accountsPartial({
           gachaFactory,
           gachaState,
           metadata,
@@ -179,19 +180,35 @@ describe("gacha-machine", () => {
       );
 
       // Verify the final resized account
-      const metadataAccountInfo = await provider.connection.getAccountInfo(
-        metadata
-      );
+      metadataAccountInfo = await provider.connection.getAccountInfo(metadata);
 
       console.log("metadata account size", metadataAccountInfo);
       // const expectedSize = 8 + 10344; // 8 for discriminator + struct size
       // expect(metadataAccountInfo.data.length).to.equal(expectedSize);
     });
     it("should add keys into the gacha metadata account and finalize the gacha machine", async () => {
+      const BATCH_SIZE = 50;
+      const keys: string[] = [];
       for (let i = 0; i < MAX_KEYS; i++) {
+        keys.push(`key${i}`);
+      }
+
+      // for (let i = 0; i < MAX_KEYS; i++) {
+      //   if (i % 100 === 0) console.log(`${i} keys added`);
+      for (
+        let batchStart = 0;
+        batchStart < keys.length;
+        batchStart += BATCH_SIZE
+      ) {
+        const batch = keys.slice(batchStart, batchStart + BATCH_SIZE);
+        console.log(
+          `Adding keys ${batchStart} to ${batchStart + batch.length - 1}`
+        );
+
         await program.methods
-          .addKey(`key${i}`)
-          .accounts({
+          // .addKey(`key${i}`)
+          .addKeys(batch)
+          .accountsPartial({
             gachaFactory,
             gachaState,
             metadata,
@@ -204,12 +221,11 @@ describe("gacha-machine", () => {
 
       await program.methods
         .finalize()
-        .accounts({
+        .accountsPartial({
           gachaFactory,
           gachaState,
           metadata,
           admin: admin.publicKey,
-          systemProgram: SystemProgram.programId,
         })
         .signers([admin])
         .rpc();
@@ -228,9 +244,9 @@ describe("gacha-machine", () => {
 
       console.log(
         "metadata account",
-        bytesToString(metadataAccount.encryptedKeys[58])
+        bytesToString(metadataAccount.encryptedKeys[MAX_KEYS / 2])
       );
-      console.log("metadata account", metadataAccount.remainingIndices[58]);
+      console.log("metadata account", metadataAccount.remainingIndices);
     });
 
     it("should close all state accounts in the program", async () => {
@@ -239,7 +255,7 @@ describe("gacha-machine", () => {
 
       await program.methods
         .closeAll()
-        .accounts({
+        .accountsPartial({
           gachaFactory,
           gachaState,
           metadata,

@@ -4,16 +4,11 @@ use anchor_lang::prelude::*;
 /// Contains all program-wide constants and configuration values.
 
 /// Maximum number of keys that can be stored in a gacha machine
-#[constant]
-pub const MAX_KEYS: usize = 90;
+// #[constant]
+pub const MAX_KEYS: usize = 1000;
 
 /// Maximum length of each key
-#[constant]
 pub const MAX_KEY_LEN: usize = 100;
-
-/// Batch size (1024 KB CPI). Calculate the metadata account size accordingly
-#[constant]
-pub const BATCH_SIZE: usize = 90;
 
 /// Maximum slot difference allowed for randomness validation
 /// This ensures randomness data is recent and valid

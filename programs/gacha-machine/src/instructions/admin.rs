@@ -134,34 +134,37 @@ pub fn remove_payment_config(
 /// - Machine must not be finalized
 /// - Key cannot be empty
 /// - Must not exceed MAX_KEYS limit
-pub fn add_key(ctx: Context<AddKey>, encrypted_key: String) -> Result<()> {
-    let gacha_state = &mut ctx.accounts.gacha_state;
+pub fn add_keys(ctx: Context<AddKey>, encrypted_keys: Vec<String>) -> Result<()> {
+    let gacha_state = &ctx.accounts.gacha_state;
     let metadata = &mut ctx.accounts.metadata.load_mut()?;
 
     // Validation: ensure machine is in the correct state for adding keys
     require!(!gacha_state.is_finalized, GachaError::GachaAlreadyFinalized);
-    require!(
-        !encrypted_key.is_empty() && encrypted_key.len() <= MAX_KEY_LEN,
-        GachaError::InvalidKeyLength
-    );
-    require!(
-        metadata.keys_count < MAX_KEYS as u16,
-        GachaError::KeyPoolFull
-    );
 
-    let current_index = metadata.keys_count as usize;
-    let key_arr = string_to_fixed_bytes::<MAX_KEY_LEN>(&encrypted_key); // Use the helper function
+    for encrypted_key in encrypted_keys.iter() {
+        require!(
+            !encrypted_key.is_empty() && encrypted_key.len() <= MAX_KEY_LEN,
+            GachaError::InvalidKeyLength
+        );
+        require!(
+            metadata.keys_count < MAX_KEYS as u16,
+            GachaError::KeyPoolFull
+        );
 
-    // Add the fixed-size key to the pool
-    metadata.encrypted_keys[current_index] = key_arr;
-    metadata.keys_count += 1;
+        let current_index = metadata.keys_count as usize;
+        let key_arr = string_to_fixed_bytes::<MAX_KEY_LEN>(&encrypted_key); // Use the helper function
 
-    emit!(KeyAdded {
-        admin: ctx.accounts.admin.key(),
-        key: encrypted_key,
-        total_keys: metadata.keys_count,
-        gacha_state: gacha_state.key()
-    });
+        // Add the fixed-size key to the pool
+        metadata.encrypted_keys[current_index] = key_arr;
+        metadata.keys_count += 1;
+
+        emit!(KeyAdded {
+            admin: ctx.accounts.admin.key(),
+            key: encrypted_key.clone(),
+            total_keys: metadata.keys_count,
+            gacha_state: gacha_state.key()
+        });
+    }
 
     Ok(())
 }
@@ -320,7 +323,7 @@ pub fn release_decryption_key(ctx: Context<AdminAction>, decryption_key: String)
 ///
 /// This instruction is called before `initialize_metadata` to expand the metadata
 /// account from its small initial size to its full size.
-pub fn resize_metadata(_ctx: Context<ResizeMetadata>) -> Result<()> {
+pub fn resize_metadata(_ctx: Context<ResizeMetadata>, _new_size: u32) -> Result<()> {
     Ok(())
 }
 
@@ -335,4 +338,3 @@ pub fn initialize_metadata(ctx: Context<InitializeMetadata>) -> Result<()> {
     metadata.bump = ctx.bumps.metadata;
     Ok(())
 }
-

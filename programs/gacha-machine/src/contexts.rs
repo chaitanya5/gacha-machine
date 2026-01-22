@@ -32,6 +32,7 @@ pub struct InitializeGachaFactory<'info> {
 pub struct CreateGacha<'info> {
     /// The gacha factory state account (PDA)
     #[account(
+        mut,
         has_one = admin,
         seeds = [GACHA_FACTORY],
         bump
@@ -349,6 +350,7 @@ pub struct Settle<'info> {
 
 /// Accounts required for resizing the metadata account
 #[derive(Accounts)]
+#[instruction(_new_size: u32)]
 pub struct ResizeMetadata<'info> {
     /// The gacha factory state account (PDA)
     #[account(
@@ -368,8 +370,8 @@ pub struct ResizeMetadata<'info> {
         mut,
         seeds = [METADATA, gacha_factory.key().as_ref(), gacha_state.key().as_ref()],
         bump,
-        // realloc = 10000,
-        realloc = 10 * (1024 as usize),
+        // realloc = 10 * (1024 as usize),
+        realloc = _new_size as usize,
         realloc::payer = admin,
         realloc::zero = true,
     )]
@@ -444,9 +446,6 @@ pub struct CloseAllAccounts<'info> {
         close = admin,
         seeds = [METADATA, gacha_factory.key().as_ref(), gacha_state.key().as_ref()],
         bump,
-        // realloc = 10200,
-        // realloc::payer = admin,
-        // realloc::zero = true,
     )]
     pub metadata: AccountLoader<'info, GachaMachineMetadata>,
 

@@ -97,7 +97,6 @@ pub struct PaymentConfig {
 // #[account]
 #[account(zero_copy)]
 // #[repr(packed)]
-// #[zero_copy]
 // #[derive(InitSpace)]
 pub struct GachaMachineMetadata {
     /// Reference to the gacha machine this config belongs to

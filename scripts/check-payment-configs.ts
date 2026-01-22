@@ -1,30 +1,57 @@
 // scripts/check-payment-configs.ts
+import * as anchor from "@coral-xyz/anchor";
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { createAnchorProgramAndClient, keypairFromPrivateKey } from "./utils";
+import {
+  createAnchorProgramAndClient,
+  keypairFromPrivateKey,
+  getConfigurationFromNetwork,
+} from "./utils";
 
-async function checkPaymentConfigs(network: string) {
+async function checkPaymentConfigs(
+  gachaMachineCount: anchor.BN,
+  network: string
+) {
   const dummyKeypair = Keypair.generate();
   const { client } = createAnchorProgramAndClient(network, dummyKeypair);
 
   try {
-    const state = await client.getGachaState();
-    console.log(
-      "Payment configs PDAs:",
-      state.paymentConfigs.map((p: any) => p.toString())
-    );
+    const state = await client.getGachaState(gachaMachineCount);
+    // console.log(
+    //   "Payment configs PDAs:",
+    //   state.paymentConfigs.map((p: any) => p.toString())
+    // );
+    const { usdt, usdc, SOL } = getConfigurationFromNetwork(network);
 
-    for (const configPda of state.paymentConfigs) {
+    // Get current gacha state to check existing payment configs
+    const gachaStatePDA = client.findGachaStatePDA(gachaMachineCount);
+
+    // Add SOL, USDT, USDC
+    const currencies = [SOL, usdt, usdc];
+    for (const currency of currencies) {
+      const paymentMint = new PublicKey(currency.mint);
+
+      const paymentConfigPDA = client.findPaymentConfigPDA(
+        gachaStatePDA,
+        paymentMint
+      );
+      let paymentConfig;
+
       try {
-        const config = await client.program.account.paymentConfig.fetch(
-          configPda
+        paymentConfig = await client.getPaymentConfig(
+          gachaStatePDA,
+          paymentMint
         );
-        console.log(`Config ${configPda}:`);
-        console.log(`  - mint: ${config.mint}`);
-        console.log(`  - price: ${config.price}`);
-        console.log(`  - admin recipient: ${config.adminRecipientAccount}`);
+        console.log(`Payment Config PDA ${paymentConfigPDA.toBase58()}:`);
+        console.log(`  - mint: ${paymentConfig.mint}`);
+        console.log(`  - price: ${paymentConfig.price}`);
+        console.log(
+          `  - admin recipient: ${paymentConfig.adminRecipientAccount}`
+        );
         console.log("");
-      } catch (e: any) {
-        console.log(`Failed to fetch config ${configPda}: ${e.message}`);
+      } catch (error) {
+        console.log(
+          `PaymentConfig for ${paymentConfigPDA.toBase58()} not yet initialized`
+        );
       }
     }
   } catch (e: any) {
@@ -33,6 +60,8 @@ async function checkPaymentConfigs(network: string) {
 }
 
 const args = process.argv.slice(2);
-const [network] = args;
+const [gachaMachineCount, network] = args;
 
-checkPaymentConfigs(network).catch(console.error);
+checkPaymentConfigs(new anchor.BN(gachaMachineCount), network).catch(
+  console.error
+);

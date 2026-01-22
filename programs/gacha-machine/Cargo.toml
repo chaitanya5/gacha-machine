@@ -22,7 +22,7 @@ idl-build = [
 
 
 [dependencies]
-anchor-lang = "0.32.1"
-anchor-spl = "0.32.1"
+anchor-lang = "0.31.1"
+anchor-spl = "0.31.1"
 switchboard-on-demand = { version = "0.10.1", features = ["anchor"] }
 bytemuck = { version = "1.24.0", features = ["min_const_generics"] }

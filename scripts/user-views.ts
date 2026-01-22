@@ -7,40 +7,49 @@ import {
   getConfigurationFromNetwork,
 } from "./utils";
 
-async function viewGachaState(network: string) {
+async function viewGachaState(gachaMachineCount: anchor.BN, network: string) {
   console.log(`\n📊 Viewing Gacha State...`);
 
   const dummyKeypair = Keypair.generate();
   const { client } = createAnchorProgramAndClient(network, dummyKeypair);
 
   try {
-    const gachaState = await client.getGachaState();
-    console.log("=== GACHA STATE ===", gachaState);
+    const gachaState = await client.getGachaState(gachaMachineCount);
+    const metadataState = await client.getMetadataState(gachaMachineCount);
 
     console.log("=== GACHA STATE ===");
-    console.log(`🏛️  Gacha State Address: ${client.gachaStatePDA.toBase58()}`);
+    console.log(
+      `🏛️  Gacha State Address: ${client
+        .findGachaStatePDA(gachaMachineCount)
+        .toBase58()}`
+    );
     console.log(`👑 Admin: ${gachaState.admin}`);
     console.log(`🎯 Total Pulls: ${Number(gachaState.pullCount)}`);
     console.log(`🎯 Total Settles: ${Number(gachaState.settleCount)}`);
     console.log(`🔒 Is Finalized: ${gachaState.isFinalized}`);
-    console.log(`🗝️  Total Encrypted Keys: ${gachaState.encryptedKeys.length}`);
+    console.log(
+      `🗝️  Total Encrypted Keys: ${metadataState.encryptedKeys.length}`
+    );
     console.log(`🏗️  Bump: ${gachaState.bump}`);
 
-    if (gachaState.encryptedKeys.length > 0) {
-      console.log(
-        `\n📝 All Encrypted Keys (${gachaState.encryptedKeys.length} total):`
-      );
-      for (let i = 0; i < gachaState.encryptedKeys.length; i++) {
-        const key = gachaState.encryptedKeys[i];
-        console.log(`   ${i + 1}. ${key}`);
-      }
-    }
+    // if (metadataState.encryptedKeys.length > 0) {
+    //   console.log(
+    //     `\n📝 All Encrypted Keys (${metadataState.encryptedKeys.length} total):`
+    //   );
+    //   for (let i = 0; i < metadataState.encryptedKeys.length; i++) {
+    //     const key = metadataState.encryptedKeys[i];
+    //     console.log(`   ${i + 1}. ${key}`);
+    //   }
+    // }
 
-    if (gachaState.remainingIndices && gachaState.remainingIndices.length > 0) {
+    if (
+      metadataState.remainingIndices &&
+      metadataState.remainingIndices.length > 0
+    ) {
       console.log(
-        `\n🔢 All Remaining Indices (${gachaState.remainingIndices.length} total):`
+        `\n🔢 All Remaining Indices (${metadataState.remainingIndices.length} total):`
       );
-      console.log(`   [${gachaState.remainingIndices.join(", ")}]`);
+      console.log(`   [${metadataState.remainingIndices.join(", ")}]`);
     }
 
     return gachaState;
@@ -50,6 +59,7 @@ async function viewGachaState(network: string) {
 }
 
 async function viewPlayerState(
+  gachaMachineCount: anchor.BN,
   userPublicKey: string,
   nonce?: number,
   network: string = "mainnet"
@@ -59,41 +69,44 @@ async function viewPlayerState(
   // Parse public key
   const user = new PublicKey(userPublicKey);
   console.log(`User wallet: ${user.toBase58()}`);
-
   const dummyKeypair = Keypair.generate();
   const { connection, program, client } = createAnchorProgramAndClient(
     network,
     dummyKeypair
   );
+
+  const gachaStatePDA = client.findGachaStatePDA(gachaMachineCount);
   let playerState;
   try {
     if (nonce !== undefined) {
-      // View specific player state by nonce
-      const [playerStatePDA] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("player_state"),
-          user.toBuffer(),
-          new anchor.BN(nonce).toBuffer("le", 8),
-        ],
-        client.program.programId
-      );
-
-      console.log(`🔍 Looking for player state with nonce: ${nonce}`);
-      console.log(`📍 Player State PDA: ${playerStatePDA.toBase58()}`);
-
       try {
-        // Use the gacha client's getPlayerState method
-        playerState = await client.getPlayerState(user, new anchor.BN(nonce));
+        // View specific player state by nonce
+        const playerStatePDA = client.findPlayerStatePDA(
+          gachaStatePDA,
+          user,
+          new anchor.BN(nonce)
+        );
+        playerState = await client.getPlayerState(
+          gachaStatePDA,
+          user,
+          new anchor.BN(nonce)
+        );
+
+        console.log("playerState", playerState);
+
+        console.log(`🔍 Looking for player state with nonce: ${nonce}`);
+        console.log(`📍 Player State PDA: ${playerStatePDA.toBase58()}`);
 
         console.log("\n=== PLAYER STATE ===");
         console.log(`👤 User: ${playerState.user}`);
-        console.log(`🎲 Nonce: ${playerState.nonce.toString()}`);
+        console.log(`🎲 Nonce: ${playerState.nonce}`);
+        // console.log(`🎲 Nonce: ${playerState.nonce.toString()}`);
         console.log(`🔗 Gacha State: ${playerState.gachaState}`);
         console.log(`🔗 Randomness Account: ${playerState.randomnessAccount}`);
         console.log(`🔗 Payment Mint: ${playerState.paymentMint}`);
         console.log(`🎯 Is Settled: ${playerState.isSettled}`);
         console.log(`🏗️  Bump: ${playerState.bump}`);
-        console.log(`🎰 Pull Slot: ${playerState.pullSlot.toString()}`);
+        // console.log(`🎰 Pull Slot: ${playerState.pullSlot.toString()}`);
         console.log(`🎲 Result Index: ${playerState.resultIndex}`);
 
         if (playerState.isSettled) {
@@ -110,9 +123,9 @@ async function viewPlayerState(
           console.log(
             `⏳ Prize not yet revealed. Use settle command to reveal.`
           );
-          console.log(
-            `💡 Run: npx ts-node user-interaction.ts settle "<privateKey>" ${playerState.nonce.toString()}`
-          );
+          // console.log(
+          //   `💡 Run: npx ts-node user-interaction.ts settle "<privateKey>" ${playerState.nonce.toString()}`
+          // );
         }
       } catch (fetchError) {
         console.error("❌ Failed to fetch player state:", fetchError);
@@ -123,7 +136,7 @@ async function viewPlayerState(
       console.log("🔍 Searching for all player states for this user...");
 
       // Get current gacha state to know the pull count range
-      const gachaState = await client.getGachaState();
+      const gachaState = await client.getGachaState(gachaMachineCount);
       const totalPulls = gachaState.pullCount;
 
       console.log(`📊 Checking nonces 0 to ${totalPulls - 1}...`);
@@ -131,14 +144,17 @@ async function viewPlayerState(
       let foundStates = 0;
 
       for (let i = 0; i < totalPulls; i++) {
-        const playerStatePDA = client.findPlayerStatePDA(
-          user,
-          new anchor.BN(i)
-        );
-
         try {
-          // Use the gacha client's getPlayerState method
-          playerState = await client.getPlayerState(user, new anchor.BN(i));
+          const playerStatePDA = client.findPlayerStatePDA(
+            gachaStatePDA,
+            user,
+            new anchor.BN(i)
+          );
+          playerState = await client.getPlayerState(
+            gachaStatePDA,
+            user,
+            new anchor.BN(i)
+          );
 
           if (foundStates === 0) {
             console.log("\n=== FOUND PLAYER STATES ===");
@@ -211,8 +227,8 @@ async function main() {
   switch (command) {
     case "gachastate":
     case "gacha":
-      const [, gachaNetwork] = args;
-      await viewGachaState(gachaNetwork);
+      const [, gachaMachineCount, gachaNetwork] = args;
+      await viewGachaState(new anchor.BN(gachaMachineCount), gachaNetwork);
       break;
 
     case "playerstate":
@@ -228,7 +244,7 @@ async function main() {
         console.log("  - Network: mainnet (default) or devnet");
         return;
       }
-      const [, publickey, arg2, arg3] = args;
+      const [, gcmCount, publickey, arg2, arg3] = args;
 
       // Determine if arg2 is a nonce (number) or network (string)
       let parsedNonce: number | undefined;
@@ -244,7 +260,12 @@ async function main() {
         playerNetwork = arg2 || "mainnet";
       }
 
-      await viewPlayerState(publickey, parsedNonce, playerNetwork);
+      await viewPlayerState(
+        new anchor.BN(gcmCount),
+        publickey,
+        parsedNonce,
+        playerNetwork
+      );
       break;
 
     case "decrypt":
